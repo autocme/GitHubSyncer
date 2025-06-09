@@ -1,7 +1,9 @@
 # GitHub Sync Server - Bind Mount Configuration
 
 ## Overview
-The GitHub Sync Server now uses `/repos` as the default repository storage path and supports bind mounts for persistent repository storage across container restarts.
+The GitHub Sync Server supports bind mounts for persistent repository storage across container restarts. The default path is configurable:
+- **Development (Replit)**: Uses writable workspace directory
+- **Production (Docker)**: Uses `/repos` for bind mount compatibility
 
 ## Docker Compose Configuration with Bind Mounts
 
