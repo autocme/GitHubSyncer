@@ -112,6 +112,9 @@
                         <a class="list-group-item list-group-item-action" data-bs-toggle="pill" href="#git-settings">
                             <i class="fab fa-git-alt me-2"></i>Git Keys
                         </a>
+                        <a class="list-group-item list-group-item-action" data-bs-toggle="pill" href="#api-docs">
+                            <i class="fas fa-book me-2"></i>API Documentation
+                        </a>
                     </div>
                 </div>
 
@@ -137,6 +140,170 @@
             <!-- Settings Content -->
             <div class="col-md-9">
                 <div class="tab-content">
+                    <!-- API Documentation -->
+                    <div class="tab-pane fade" id="api-docs">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-book me-2"></i>
+                                    API Documentation
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <h6>Authentication</h6>
+                                        <p>All API requests require authentication using an API key in the Authorization header:</p>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>Authorization: Bearer YOUR_API_KEY</code>
+                                        </div>
+
+                                        <h6>Base URL</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>{{ request.base_url }}api/</code>
+                                        </div>
+
+                                        <h6>Repository Management</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Method</th>
+                                                        <th>Endpoint</th>
+                                                        <th>Description</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><span class="badge bg-primary">GET</span></td>
+                                                        <td><code>/repositories</code></td>
+                                                        <td>List all repositories</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-success">POST</span></td>
+                                                        <td><code>/repositories</code></td>
+                                                        <td>Create a new repository</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-warning">PUT</span></td>
+                                                        <td><code>/repositories/{id}</code></td>
+                                                        <td>Update repository settings</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-danger">DELETE</span></td>
+                                                        <td><code>/repositories/{id}</code></td>
+                                                        <td>Delete a repository</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-success">POST</span></td>
+                                                        <td><code>/repositories/{id}/sync</code></td>
+                                                        <td>Manually sync repository</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <h6>Container Management</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Method</th>
+                                                        <th>Endpoint</th>
+                                                        <th>Description</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><span class="badge bg-primary">GET</span></td>
+                                                        <td><code>/containers</code></td>
+                                                        <td>List all containers</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-success">POST</span></td>
+                                                        <td><code>/containers/discover</code></td>
+                                                        <td>Discover Docker containers</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-success">POST</span></td>
+                                                        <td><code>/containers/{id}/restart</code></td>
+                                                        <td>Restart a container</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <h6>System Information</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Method</th>
+                                                        <th>Endpoint</th>
+                                                        <th>Description</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><span class="badge bg-primary">GET</span></td>
+                                                        <td><code>/logs</code></td>
+                                                        <td>Get operation logs</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><span class="badge bg-primary">GET</span></td>
+                                                        <td><code>/status</code></td>
+                                                        <td>Get system status</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <h6>Webhook</h6>
+                                        <p>GitHub webhook endpoint for automatic repository updates:</p>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <code>POST {{ request.base_url }}webhook/github</code>
+                                        </div>
+                                        <p>Configure this URL in your GitHub repository settings under Webhooks.</p>
+
+                                        <h6>Example: Create Repository</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <pre><code>curl -X POST {{ request.base_url }}api/repositories \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-repo",
+    "url": "https://github.com/user/repo.git",
+    "branch": "main"
+  }'</code></pre>
+                                        </div>
+
+                                        <h6>Example: Sync Repository</h6>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <pre><code>curl -X POST {{ request.base_url }}api/repositories/1/sync \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                                        </div>
+
+                                        <h6>Response Format</h6>
+                                        <p>All API responses return JSON with the following structure:</p>
+                                        <div class="bg-dark text-light p-3 rounded mb-3">
+                                            <pre><code>{
+  "success": true,
+  "data": {...},
+  "message": "Operation completed successfully"
+}</code></pre>
+                                        </div>
+
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Note:</strong> API keys can be created in the "API Keys" section. 
+                                            Keep your API keys secure and never share them publicly.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- General Settings -->
                     <div class="tab-pane fade show active" id="general-settings">
                         <div class="card">
