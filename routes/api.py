@@ -187,12 +187,36 @@ def restart_container(container_id: str, db: Session = Depends(get_db), current_
     
     return {"message": message}
 
-# Logs endpoint
+# Logs endpoints
 @router.get("/logs")
 def get_logs(limit: int = 100, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get operation logs"""
     logs = db.query(OperationLog).order_by(OperationLog.created_at.desc()).limit(limit).all()
     return logs
+
+@router.delete("/logs")
+def clear_logs(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Clear all operation logs"""
+    try:
+        # Count logs before deletion
+        log_count = db.query(OperationLog).count()
+        
+        # Delete all logs
+        db.query(OperationLog).delete()
+        db.commit()
+        
+        logger.info(f"Cleared {log_count} operation logs by user {current_user.username}")
+        
+        return {
+            "success": True,
+            "message": f"Successfully cleared {log_count} operation logs",
+            "deleted_count": log_count
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to clear logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear logs: {str(e)}")
 
 # API Key endpoints
 @router.get("/api-keys")

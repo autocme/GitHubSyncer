@@ -547,8 +547,16 @@ async function clearLogs() {
     }
     
     try {
-        showToast('This feature is not yet implemented', 'info');
-        // TODO: Implement clear logs API endpoint
+        showToast('Clearing logs...', 'info');
+        
+        const response = await apiRequest('/api/v1/logs', {
+            method: 'DELETE'
+        });
+        
+        showToast(`Successfully cleared ${response.deleted_count} logs`, 'success');
+        
+        // Refresh the page to show the empty logs table
+        setTimeout(() => location.reload(), 1000);
         
     } catch (error) {
         showToast('Failed to clear logs: ' + error.message, 'danger');
