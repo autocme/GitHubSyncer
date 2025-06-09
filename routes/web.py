@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, Cookie
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,6 +14,18 @@ from utils.logger import setup_logger
 logger = setup_logger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
+
+# Add JSON filter for templates
+def from_json_filter(value):
+    """Parse JSON string to Python object"""
+    if value:
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+templates.env.filters["from_json"] = from_json_filter
 
 def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
     """Get current user from session cookie"""

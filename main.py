@@ -1,4 +1,5 @@
 import os
+import json
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -40,8 +41,20 @@ app.include_router(web.router, prefix="", tags=["web"])
 app.include_router(api.router, prefix="/api/v1", tags=["api"])
 app.include_router(webhook.router, prefix="/webhook", tags=["webhook"])
 
-# Templates
+# Templates with custom filters
 templates = Jinja2Templates(directory="templates")
+
+# Add custom filters
+def from_json_filter(value):
+    """Parse JSON string to Python object"""
+    if value:
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
+
+templates.env.filters["from_json"] = from_json_filter
 
 if __name__ == "__main__":
     import os

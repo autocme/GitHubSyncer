@@ -213,13 +213,8 @@
                                     <tr>
                                         <td><strong>{{ container.name }}</strong></td>
                                         <td>
-                                            {% set labels = container.labels | from_json if container.labels else {} %}
-                                            {% if labels %}
-                                                {% for key, value in labels.items() %}
-                                                    <span class="badge bg-light text-dark me-1 mb-1">
-                                                        {{ key }}={{ value }}
-                                                    </span>
-                                                {% endfor %}
+                                            {% if container.labels and container.labels != '{}' %}
+                                                <code>{{ container.labels }}</code>
                                             {% else %}
                                                 <span class="text-muted">No labels</span>
                                             {% endif %}
