@@ -258,6 +258,20 @@ h6 {
     color: #ffffff !important;
 }
 
+/* Login page specific styling */
+.card-title {
+    color: #ffffff !important;
+}
+
+/* Login page text */
+body .card .card-title {
+    color: #ffffff !important;
+}
+
+body .card h2 {
+    color: #ffffff !important;
+}
+
 /* Specific text elements that need color fixes */
 .modal-title {
     color: #212529 !important;
