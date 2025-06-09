@@ -203,12 +203,18 @@ Host github.com
             
             return False, error_msg
     
-    def generate_ssh_key(self, name: str) -> Tuple[str, str]:
-        """Generate SSH key pair for Git authentication"""
+    def _get_ssh_keygen_path(self) -> str:
+        """Get ssh-keygen path from settings or auto-detect"""
         try:
-            # Find ssh-keygen binary dynamically
-            ssh_keygen_cmd = None
+            # Check settings for custom path
+            setting = self.db.query(Setting).filter(Setting.key == "ssh_keygen_path").first()
+            if setting and setting.value and setting.value != "auto":
+                if os.path.exists(setting.value):
+                    return setting.value
+                else:
+                    logger.warning(f"Configured ssh-keygen path {setting.value} not found, falling back to auto-detection")
             
+            # Auto-detect ssh-keygen binary
             # Try common paths
             common_paths = [
                 "/usr/bin/ssh-keygen",
@@ -223,21 +229,28 @@ Host github.com
                     import glob
                     matches = glob.glob(path)
                     if matches:
-                        ssh_keygen_cmd = matches[0]
-                        break
+                        return matches[0]
                 else:
                     if os.path.exists(path) or path == "ssh-keygen":
-                        ssh_keygen_cmd = path
-                        break
+                        return path
             
-            if not ssh_keygen_cmd:
-                # Try using 'which' command
-                try:
-                    result = subprocess.run(['which', 'ssh-keygen'], 
-                                          capture_output=True, text=True, check=True)
-                    ssh_keygen_cmd = result.stdout.strip()
-                except subprocess.CalledProcessError:
-                    raise Exception("ssh-keygen not found in system PATH")
+            # Try using 'which' command
+            try:
+                result = subprocess.run(['which', 'ssh-keygen'], 
+                                      capture_output=True, text=True, check=True)
+                return result.stdout.strip()
+            except subprocess.CalledProcessError:
+                raise Exception("ssh-keygen not found in system PATH")
+                
+        except Exception as e:
+            logger.error(f"Failed to find ssh-keygen: {e}")
+            raise Exception(f"ssh-keygen not available: {e}")
+
+    def generate_ssh_key(self, name: str) -> Tuple[str, str]:
+        """Generate SSH key pair for Git authentication"""
+        try:
+            # Get ssh-keygen path from settings or auto-detect
+            ssh_keygen_cmd = self._get_ssh_keygen_path()
             
             # Generate SSH key using ssh-keygen
             key_file = f"/tmp/github_sync_{name}_{os.getpid()}"

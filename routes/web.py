@@ -269,6 +269,8 @@ def update_general_settings(
     request: Request,
     main_path: str = Form(...),
     log_retention_days: int = Form(...),
+    ssh_keygen_path: str = Form("auto"),
+    git_path: str = Form("auto"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_auth)
 ):
@@ -283,6 +285,22 @@ def update_general_settings(
         log_retention_setting = db.query(Setting).filter(Setting.key == "log_retention_days").first()
         if log_retention_setting:
             log_retention_setting.value = str(log_retention_days)
+        
+        # Update SSH keygen path
+        ssh_keygen_setting = db.query(Setting).filter(Setting.key == "ssh_keygen_path").first()
+        if not ssh_keygen_setting:
+            ssh_keygen_setting = Setting(key="ssh_keygen_path", value=ssh_keygen_path, description="Path to ssh-keygen binary")
+            db.add(ssh_keygen_setting)
+        else:
+            ssh_keygen_setting.value = ssh_keygen_path
+        
+        # Update git path
+        git_path_setting = db.query(Setting).filter(Setting.key == "git_path").first()
+        if not git_path_setting:
+            git_path_setting = Setting(key="git_path", value=git_path, description="Path to git binary")
+            db.add(git_path_setting)
+        else:
+            git_path_setting.value = git_path
         
         db.commit()
         logger.info("General settings updated")
