@@ -123,7 +123,11 @@ def login(
             "error": "Invalid username or password"
         })
     
-    # Create JWT token
+    # Set session data for API authentication
+    request.session["user_id"] = user.id
+    request.session["username"] = user.username
+    
+    # Also create JWT token for cookie-based auth (optional)
     token = auth_service.create_jwt_token(user)
     
     response = RedirectResponse(url="/dashboard", status_code=302)
@@ -138,8 +142,10 @@ def login(
     return response
 
 @router.get("/logout")
-def logout():
+def logout(request: Request):
     """Handle logout"""
+    # Clear session data
+    request.session.clear()
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("auth_token")
     return response
