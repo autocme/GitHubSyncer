@@ -1,5 +1,6 @@
 import json
 import docker
+from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 from sqlalchemy.orm import Session
 from models import Container, OperationLog, Repository
@@ -332,32 +333,6 @@ class DockerService:
             self.db.commit()
             
             return False, error_msg
-            
-            logger.info(f"Restarting container {container.name} ({container.container_id})")
-            docker_container.restart()
-            
-            # Update container record
-            container.last_restart_success = True
-            container.last_restart_time = None
-            container.last_restart_error = None
-            container.status = "running"
-            
-            # Log operation
-            log_entry = OperationLog(
-                operation_type="restart",
-                container_id=container.container_id,
-                status="success",
-                message=f"Successfully restarted container {container.name}",
-                details=f"Container ID: {container.container_id}"
-            )
-            self.db.add(log_entry)
-            self.db.commit()
-            
-            success_msg = f"Successfully restarted container {container.name}"
-            logger.info(success_msg)
-            return True, success_msg
-            
-        except docker.errors.NotFound:
             error_msg = f"Container {container.name} not found"
             logger.error(error_msg)
             
