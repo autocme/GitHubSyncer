@@ -82,7 +82,7 @@ class WebhookService:
                     # Simulate successful pull when file system is read-only
                     logger.info(f"Simulating pull for {repository.name} (read-only environment)")
                     pull_success = True
-                    pull_message = f"Simulated pull for repository {repository.name}"
+                    pull_message = f"Simulated successful pull for repository {repository.name} (read-only environment)"
                     
                     # Update repository record manually
                     repository.last_pull_success = True
@@ -92,6 +92,7 @@ class WebhookService:
                     
                     results["pull_success"] = pull_success
                     results["pull_message"] = pull_message
+                    logger.info(f"Repository {repository.name} marked as successfully pulled")
                 else:
                     raise e
             
