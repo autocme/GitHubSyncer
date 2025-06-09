@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directory for repositories
-RUN mkdir -p /app/repos
+# Create directory for repositories with proper permissions
+RUN mkdir -p /tmp/repos && chmod 755 /tmp/repos
 
 # Copy requirements
 COPY pyproject.toml uv.lock ./
@@ -33,11 +33,11 @@ EXPOSE 5000
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV MAIN_PATH=/app/repos
+ENV MAIN_PATH=/tmp/repos
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5000/api/v1/status || exit 1
+    CMD curl -f http://localhost:5000/api/v1/health || exit 1
 
 # Run the application
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]

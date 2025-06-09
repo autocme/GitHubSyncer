@@ -311,6 +311,12 @@ def delete_git_key(key_id: int, db: Session = Depends(get_db), current_user = De
     logger.info(f"Deleted Git SSH key: {git_key.name}")
     return {"message": "Git SSH key deleted successfully"}
 
+# Public health check endpoint (no authentication required)
+@router.get("/health")
+def health_check():
+    """Public health check endpoint for Docker health checks"""
+    return {"status": "healthy", "message": "GitHub Sync Server is running"}
+
 # System status endpoint
 @router.get("/status")
 def get_system_status(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
