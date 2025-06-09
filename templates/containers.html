@@ -168,6 +168,12 @@
                                 <i class="fas fa-search me-2"></i>
                                 Discover Containers
                             </button>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Note:</strong> Container discovery requires Docker socket access. 
+                                    When deployed with Docker Compose, containers with <code>restart-after: "repository-name"</code> labels will be automatically discovered and managed.
+                                </small>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -190,7 +196,7 @@
                         <div class="alert alert-info">
                             <strong>Restart After Pull Configuration:</strong><br>
                             To automatically restart a container after a repository pull, add the label:
-                            <code>restart_after_pull=repository_name</code>
+                            <code>restart-after=repository_name</code>
                         </div>
 
                         <div class="table-responsive">

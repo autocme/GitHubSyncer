@@ -24,10 +24,12 @@ class DockerService:
     def discover_containers(self) -> List[Dict]:
         """Discover all Docker containers and update database"""
         if not self.docker_available:
+            logger.info("Docker not available - running in development mode")
             return [{
                 "error": "Docker not available",
-                "message": "Docker socket not accessible. This is normal when running outside Docker.",
-                "suggestion": "Deploy using Docker Compose for full container management features"
+                "message": "Docker socket not accessible. Running in development/test mode.",
+                "suggestion": "Deploy using Docker Compose for full container management features",
+                "development_note": "This is expected when running on Replit or in development environments"
             }]
         
         try:
