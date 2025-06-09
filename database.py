@@ -9,10 +9,27 @@ logger = setup_logger(__name__)
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./github_sync.db")
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
-)
+# Configure engine based on database type
+if "postgresql" in DATABASE_URL:
+    # PostgreSQL configuration with connection pooling and SSL handling
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        connect_args={
+            "connect_timeout": 10,
+            "application_name": "github_sync_server"
+        }
+    )
+elif "sqlite" in DATABASE_URL:
+    # SQLite configuration
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    # Default configuration
+    engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

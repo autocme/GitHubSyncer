@@ -12,6 +12,7 @@ dependencies = [
     "flask-login>=0.6.3",
     "gitpython>=3.1.44",
     "httpx>=0.28.1",
+    "itsdangerous>=2.2.0",
     "jinja2>=3.1.6",
     "oauthlib>=3.2.2",
     "passlib[bcrypt]>=1.7.4",

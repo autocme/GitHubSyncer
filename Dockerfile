@@ -14,24 +14,10 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /app/repos
 
 # Copy requirements
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir \
-    fastapi \
-    uvicorn \
-    sqlalchemy \
-    psycopg2-binary \
-    gitpython \
-    docker \
-    python-multipart \
-    jinja2 \
-    aiofiles \
-    passlib \
-    pyjwt \
-    python-jose \
-    httpx \
-    starlette
+# Install dependencies using uv for faster builds
+RUN pip install uv && uv pip install --system --no-cache .
 
 # Copy application code
 COPY . .
