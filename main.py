@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from contextlib import asynccontextmanager
 from database import init_db, get_db
-from routers import api, web, webhook
+from routes import api, web, webhook
 from services.auth_service import AuthService
 from utils.logger import setup_logger
 
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8200,
+        port=5000,
         reload=True,
         log_level="info"
     )
