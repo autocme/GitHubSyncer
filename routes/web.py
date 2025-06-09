@@ -27,7 +27,9 @@ def require_auth(request: Request, db: Session = Depends(get_db)):
     """Require authentication for protected routes"""
     user = get_current_user_from_cookie(request, db)
     if not user:
-        return RedirectResponse(url="/login", status_code=302)
+        # For web routes, we need to handle redirects in the route handler itself
+        # This dependency will return None and the route will check for it
+        return None
     return user
 
 @router.get("/", response_class=HTMLResponse)
@@ -241,8 +243,12 @@ def logs_page(request: Request, page: int = 1, db: Session = Depends(get_db), cu
     })
 
 @router.get("/settings", response_class=HTMLResponse)
-def settings_page(request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+def settings_page(request: Request, db: Session = Depends(get_db), current_user = Depends(require_auth)):
     """Settings page"""
+    # Check authentication
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=302)
+    
     # Get all settings
     settings = db.query(Setting).all()
     settings_dict = {s.key: s.value for s in settings}
