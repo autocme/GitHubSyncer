@@ -138,15 +138,16 @@ Host github.com
     def pull_repository(self, repo: Repository) -> Tuple[bool, str]:
         """Pull latest changes from repository"""
         try:
-            if not repo.local_path or not Path(repo.local_path).exists():
+            local_path = str(repo.local_path) if repo.local_path else ""
+            if not local_path or not Path(local_path).exists():
                 logger.info(f"Repository not found locally, cloning instead: {repo.url}")
                 return self.clone_repository(repo)
             
             # Setup SSH key if needed
-            ssh_key_file = self._setup_ssh_key(repo.url)
+            ssh_key_file = self._setup_ssh_key(str(repo.url))
             
             # Open existing repository
-            git_repo = Repo(repo.local_path)
+            git_repo = Repo(local_path)
             
             # Configure SSH if needed
             if ssh_key_file:
@@ -158,11 +159,12 @@ Host github.com
             origin.fetch()
             
             # Switch to correct branch if needed
-            if git_repo.active_branch.name != repo.branch:
-                git_repo.git.checkout(repo.branch)
+            branch_name = str(repo.branch)
+            if git_repo.active_branch.name != branch_name:
+                git_repo.git.checkout(branch_name)
             
             # Pull changes
-            origin.pull(repo.branch)
+            origin.pull(branch_name)
             
             # Update repository record
             repo.last_pull_success = True
