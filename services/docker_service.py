@@ -35,13 +35,22 @@ class DockerService:
             container_list = []
             
             for container in containers:
+                # Support multiple label formats for restart functionality
+                labels = container.labels or {}
+                restart_after = (
+                    labels.get("restart_after_pull") or 
+                    labels.get("github-sync.restart-after") or 
+                    labels.get("restart-after") or
+                    ""
+                )
+                
                 container_data = {
                     "id": container.id,
                     "name": container.name,
                     "image": container.image.tags[0] if container.image.tags else "unknown",
                     "status": container.status,
-                    "labels": container.labels,
-                    "restart_after_pull": container.labels.get("restart_after_pull", "")
+                    "labels": labels,
+                    "restart_after_pull": restart_after
                 }
                 
                 container_list.append(container_data)
@@ -57,7 +66,7 @@ class DockerService:
                     db_container.image = container_data["image"]
                     db_container.status = container.status
                     db_container.labels = json.dumps(container.labels)
-                    db_container.restart_after_pull = container_data["restart_after_pull"]
+                    db_container.restart_after_pull = restart_after
                 else:
                     # Create new record
                     db_container = Container(
@@ -72,6 +81,16 @@ class DockerService:
             
             self.db.commit()
             logger.info(f"Discovered {len(container_list)} containers")
+            
+            # Log containers with restart labels
+            restart_containers = [c for c in container_list if c.get('restart_after_pull')]
+            if restart_containers:
+                logger.info(f"Found {len(restart_containers)} containers with restart labels:")
+                for c in restart_containers:
+                    logger.info(f"  - {c['name']}: will restart after '{c['restart_after_pull']}' repository updates")
+            else:
+                logger.info("No containers found with restart labels")
+            
             return container_list
             
         except Exception as e:
