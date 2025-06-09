@@ -129,11 +129,33 @@ body {
     border-radius: var(--border-radius);
     border: 1px solid #ced4da;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    background-color: #ffffff !important;
+    color: #212529 !important;
 }
 
 .form-control:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    background-color: #ffffff !important;
+    color: #212529 !important;
+}
+
+/* Modal Form Controls */
+.modal .form-control {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border: 1px solid #ced4da !important;
+}
+
+.modal .form-control:focus {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border-color: var(--primary-color) !important;
+}
+
+.modal .form-control::placeholder {
+    color: #6c757d !important;
+    opacity: 1;
 }
 
 .form-select {

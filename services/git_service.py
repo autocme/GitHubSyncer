@@ -199,7 +199,7 @@ Host github.com
             key_file = f"/tmp/github_sync_{name}"
             
             subprocess.run([
-                "ssh-keygen", "-t", "rsa", "-b", "4096",
+                "/nix/store/0g1s8yd0biawp32fl3i7kdbi219jx6aq-openssh-9.7p1/bin/ssh-keygen", "-t", "rsa", "-b", "4096",
                 "-f", key_file, "-N", "", "-C", f"github-sync-{name}"
             ], check=True, capture_output=True)
             
