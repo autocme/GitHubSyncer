@@ -195,13 +195,21 @@ Host github.com
     def generate_ssh_key(self, name: str) -> Tuple[str, str]:
         """Generate SSH key pair for Git authentication"""
         try:
-            # Generate SSH key using ssh-keygen
-            key_file = f"/tmp/github_sync_{name}"
+            # Use the known working path
+            ssh_keygen_cmd = "/nix/store/0g1s8yd0biawp32fl3i7kdbi219jx6aq-openssh-9.7p1/bin/ssh-keygen"
             
-            subprocess.run([
-                "/nix/store/0g1s8yd0biawp32fl3i7kdbi219jx6aq-openssh-9.7p1/bin/ssh-keygen", "-t", "rsa", "-b", "4096",
+            # Generate SSH key using ssh-keygen
+            key_file = f"/tmp/github_sync_{name}_{os.getpid()}"
+            
+            # Run ssh-keygen command
+            result = subprocess.run([
+                ssh_keygen_cmd, "-t", "rsa", "-b", "4096",
                 "-f", key_file, "-N", "", "-C", f"github-sync-{name}"
-            ], check=True, capture_output=True)
+            ], check=True, capture_output=True, text=True)
+            
+            logger.info(f"SSH key generation output: {result.stdout}")
+            if result.stderr:
+                logger.info(f"SSH key generation stderr: {result.stderr}")
             
             # Read private key
             with open(key_file, "r") as f:
