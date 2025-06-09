@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directory for repositories with proper permissions
-RUN mkdir -p /tmp/repos && chmod 755 /tmp/repos
+RUN mkdir -p /repos && chmod 755 /repos
 
 # Copy requirements
 COPY pyproject.toml uv.lock ./
@@ -33,7 +33,7 @@ EXPOSE 5000
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV MAIN_PATH=/tmp/repos
+ENV MAIN_PATH=/repos
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

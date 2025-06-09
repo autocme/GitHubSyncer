@@ -19,7 +19,7 @@ class GitService:
     def _get_main_path(self) -> str:
         """Get the main path for repositories from settings"""
         setting = self.db.query(Setting).filter(Setting.key == "main_path").first()
-        return str(setting.value) if setting else "/home/runner/workspace/repos"
+        return str(setting.value) if setting else "/repos"
     
     def _setup_ssh_key(self, repo_url: str) -> Optional[str]:
         """Setup SSH key for private repository access"""
