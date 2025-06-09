@@ -206,8 +206,38 @@ Host github.com
     def generate_ssh_key(self, name: str) -> Tuple[str, str]:
         """Generate SSH key pair for Git authentication"""
         try:
-            # Use the known working path
-            ssh_keygen_cmd = "/nix/store/0g1s8yd0biawp32fl3i7kdbi219jx6aq-openssh-9.7p1/bin/ssh-keygen"
+            # Find ssh-keygen binary dynamically
+            ssh_keygen_cmd = None
+            
+            # Try common paths
+            common_paths = [
+                "/usr/bin/ssh-keygen",
+                "/bin/ssh-keygen", 
+                "/nix/store/*/bin/ssh-keygen",
+                "ssh-keygen"  # fallback to PATH
+            ]
+            
+            for path in common_paths:
+                if path.endswith("*bin/ssh-keygen"):
+                    # Handle Nix store glob pattern
+                    import glob
+                    matches = glob.glob(path)
+                    if matches:
+                        ssh_keygen_cmd = matches[0]
+                        break
+                else:
+                    if os.path.exists(path) or path == "ssh-keygen":
+                        ssh_keygen_cmd = path
+                        break
+            
+            if not ssh_keygen_cmd:
+                # Try using 'which' command
+                try:
+                    result = subprocess.run(['which', 'ssh-keygen'], 
+                                          capture_output=True, text=True, check=True)
+                    ssh_keygen_cmd = result.stdout.strip()
+                except subprocess.CalledProcessError:
+                    raise Exception("ssh-keygen not found in system PATH")
             
             # Generate SSH key using ssh-keygen
             key_file = f"/tmp/github_sync_{name}_{os.getpid()}"

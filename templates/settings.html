@@ -334,6 +334,26 @@
                                         </div>
                                     </div>
 
+                                    <h6 class="mt-4 mb-3">Git Configuration</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="ssh_keygen_path" class="form-label">SSH-Keygen Path</label>
+                                                <input type="text" class="form-control" id="ssh_keygen_path" name="ssh_keygen_path" 
+                                                       value="{{ settings.get('ssh_keygen_path', 'auto') }}" placeholder="auto">
+                                                <div class="form-text">Path to ssh-keygen binary (use 'auto' for automatic detection)</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="git_path" class="form-label">Git Binary Path</label>
+                                                <input type="text" class="form-control" id="git_path" name="git_path" 
+                                                       value="{{ settings.get('git_path', 'auto') }}" placeholder="auto">
+                                                <div class="form-text">Path to git binary (use 'auto' for automatic detection)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="alert alert-info">
                                         <i class="fas fa-info-circle me-2"></i>
                                         <strong>Note:</strong> Changing the main path will affect where new repositories are cloned. 

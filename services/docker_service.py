@@ -10,19 +10,25 @@ logger = setup_logger(__name__)
 class DockerService:
     def __init__(self, db: Session):
         self.db = db
+        self.docker_available = False
         try:
             self.client = docker.from_env()
             self.client.ping()  # Test connection
+            self.docker_available = True
             logger.info("Docker client initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize Docker client: {e}")
+            # Only log at debug level to reduce noise
+            logger.debug(f"Docker client not available: {e}")
             self.client = None
     
     def discover_containers(self) -> List[Dict]:
         """Discover all Docker containers and update database"""
-        if not self.client:
-            logger.error("Docker client not available")
-            return []
+        if not self.docker_available:
+            return [{
+                "error": "Docker not available",
+                "message": "Docker socket not accessible. This is normal when running outside Docker.",
+                "suggestion": "Deploy using Docker Compose for full container management features"
+            }]
         
         try:
             containers = self.client.containers.list(all=True)
@@ -89,9 +95,9 @@ class DockerService:
     
     def restart_container(self, container: Container) -> Tuple[bool, str]:
         """Restart a Docker container"""
-        if not self.client:
-            error_msg = "Docker client not available"
-            logger.error(error_msg)
+        if not self.docker_available:
+            error_msg = "Docker not available - container restart skipped (normal when running outside Docker)"
+            logger.debug(error_msg)
             return False, error_msg
         
         try:
