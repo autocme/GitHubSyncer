@@ -60,8 +60,11 @@ Host github.com
     def clone_repository(self, repo: Repository) -> Tuple[bool, str]:
         """Clone a repository to local path"""
         try:
+            main_path = self._get_main_path()
             repo_name = extract_repo_name_from_url(repo.url)
-            repo_path = Path(self.main_path) / repo_name
+            repo_path = Path(main_path) / repo_name
+            
+            logger.info(f"Using main path: {main_path} for repository: {repo_name}")
             
             # Remove existing directory if it exists
             if repo_path.exists():
@@ -105,8 +108,16 @@ Host github.com
             return True, f"Successfully cloned repository {repo_name}"
             
         except Exception as e:
-            error_msg = f"Failed to clone repository {repo.url}: {str(e)}"
+            error_msg = f"Failed to clone repository {repo.name} from {repo.url}: {str(e)}"
             logger.error(error_msg)
+            
+            # Add specific error details for common issues
+            if "Read-only file system" in str(e):
+                error_msg += f" - The target directory {main_path} is read-only. Please ensure the directory is writable."
+            elif "Permission denied" in str(e):
+                error_msg += f" - Permission denied accessing {main_path}. Please check directory permissions."
+            elif "No such file or directory" in str(e):
+                error_msg += f" - Directory {main_path} does not exist or is not accessible."
             
             repo.last_pull_success = False
             repo.last_pull_error = error_msg
@@ -116,7 +127,7 @@ Host github.com
                 operation_type="clone",
                 repository_id=repo.id,
                 status="error",
-                message=f"Failed to clone repository",
+                message=f"Failed to clone repository {repo.name}",
                 details=error_msg
             )
             self.db.add(log_entry)
