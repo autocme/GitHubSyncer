@@ -36,16 +36,30 @@ def get_current_user(request: Request, authorization: str = Header(None), db: Se
     auth_service = AuthService(db)
     
     # First try session-based authentication (for web interface)
-    user_id = request.session.get('user_id')
-    logger.debug(f"Session user_id: {user_id}")
-    logger.debug(f"Session data: {dict(request.session)}")
+    try:
+        user_id = request.session.get('user_id')
+        logger.info(f"Session user_id: {user_id}")
+        logger.info(f"Session data: {dict(request.session)}")
+        
+        if user_id:
+            from models import User
+            user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+            logger.info(f"Found user: {user.username if user else None}")
+            if user:
+                return user
+    except Exception as e:
+        logger.error(f"Session auth error: {e}")
     
-    if user_id:
-        from models import User
-        user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-        logger.debug(f"Found user: {user.username if user else None}")
-        if user:
-            return user
+    # Try cookie-based JWT token
+    try:
+        auth_cookie = request.cookies.get("auth_token")
+        if auth_cookie:
+            user = auth_service.verify_jwt_token(auth_cookie)
+            if user:
+                logger.info(f"Authenticated via cookie: {user.username}")
+                return user
+    except Exception as e:
+        logger.error(f"Cookie auth error: {e}")
     
     # Then try API key or JWT token from Authorization header
     if authorization and authorization.startswith("Bearer "):
@@ -61,6 +75,7 @@ def get_current_user(request: Request, authorization: str = Header(None), db: Se
         if user:
             return user
     
+    logger.warning("All authentication methods failed")
     raise HTTPException(status_code=401, detail="Invalid token")
 
 # Repository endpoints
