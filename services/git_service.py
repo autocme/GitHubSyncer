@@ -19,7 +19,7 @@ class GitService:
     def _get_main_path(self) -> str:
         """Get the main path for repositories from settings"""
         setting = self.db.query(Setting).filter(Setting.key == "main_path").first()
-        return setting.value if setting else "/tmp/repos"
+        return str(setting.value) if setting else "/home/runner/workspace/repos"
     
     def _setup_ssh_key(self, repo_url: str) -> Optional[str]:
         """Setup SSH key for private repository access"""
@@ -38,7 +38,7 @@ class GitService:
         
         key_file = ssh_dir / "github_sync_key"
         with open(key_file, "w") as f:
-            f.write(git_key.private_key)
+            f.write(str(git_key.private_key))
         
         key_file.chmod(0o600)
         
@@ -61,7 +61,7 @@ Host github.com
         """Clone a repository to local path"""
         try:
             main_path = self._get_main_path()
-            repo_name = extract_repo_name_from_url(repo.url)
+            repo_name = extract_repo_name_from_url(str(repo.url))
             repo_path = Path(main_path) / repo_name
             
             logger.info(f"Using main path: {main_path} for repository: {repo_name}")
@@ -74,7 +74,7 @@ Host github.com
             repo_path.parent.mkdir(parents=True, exist_ok=True)
             
             # Setup SSH key if needed
-            ssh_key_file = self._setup_ssh_key(repo.url)
+            ssh_key_file = self._setup_ssh_key(str(repo.url))
             
             # Clone repository
             logger.info(f"Cloning repository {repo.url} to {repo_path}")
@@ -83,9 +83,9 @@ Host github.com
                 # Use SSH key for cloning
                 env = os.environ.copy()
                 env['GIT_SSH_COMMAND'] = f'ssh -i {ssh_key_file} -o StrictHostKeyChecking=no'
-                git_repo = Repo.clone_from(repo.url, repo_path, branch=repo.branch, env=env)
+                git_repo = Repo.clone_from(str(repo.url), repo_path, branch=str(repo.branch), env=env)
             else:
-                git_repo = Repo.clone_from(repo.url, repo_path, branch=repo.branch)
+                git_repo = Repo.clone_from(str(repo.url), repo_path, branch=str(repo.branch))
             
             # Update repository record
             repo.local_path = str(repo_path)
