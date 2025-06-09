@@ -67,13 +67,70 @@ This design provides flexible access while maintaining a simple architecture.
 4. Events: Push events (or all events)
 5. Active: ✓
 
-### Container Labels
+### Container Labels and Auto-Restart
 
-Configure containers for automatic restart after repository updates:
+The system automatically restarts Docker containers after repository updates using container labels. Multiple label formats are supported for flexibility:
 
-```bash
-docker run -d --label "restart_after_pull=my-repo-name" my-app:latest
+**Supported Label Formats:**
+```yaml
+# Primary format (recommended)
+restart_after_pull: "repository-name"
+
+# Alternative formats
+github-sync.restart-after: "repository-name"
+restart-after: "repository-name"
 ```
+
+**Docker Compose Example:**
+```yaml
+version: '3.8'
+services:
+  web-app:
+    image: my-web-app:latest
+    labels:
+      restart_after_pull: "my-web-repo"
+    ports:
+      - "3000:3000"
+  
+  api-service:
+    image: my-api:latest
+    labels:
+      github-sync.restart-after: "my-backend-api"
+    ports:
+      - "8080:8080"
+```
+
+**Docker Run Examples:**
+```bash
+# Simple container with restart label
+docker run -d \
+  --name my-app \
+  --label "restart_after_pull=my-repo-name" \
+  my-image:latest
+
+# Multiple labels (only restart_after_pull is used)
+docker run -d \
+  --name api-server \
+  --label "restart_after_pull=backend-repo" \
+  --label "environment=production" \
+  api:latest
+```
+
+**How It Works:**
+1. **Add Repository**: Create repository "my-repo-name" in the web interface
+2. **Label Containers**: Add `restart_after_pull: "my-repo-name"` label to containers
+3. **Automatic Discovery**: System discovers labeled containers when you click "Discover Containers"
+4. **Webhook Processing**: When GitHub webhook triggers for "my-repo-name":
+   - Repository code is automatically pulled
+   - All containers with matching labels are restarted in sequence
+   - Success/failure status is logged for monitoring
+
+**Container Discovery Process:**
+- Navigate to **Containers** section in web interface
+- Click **"Discover Containers"** button
+- System scans all Docker containers and parses their labels
+- Containers with restart labels are automatically tracked
+- View which containers will restart for each repository
 
 ## Initial Setup
 
