@@ -9,7 +9,7 @@ services:
       - "8200:5000"  # Webhook port (external 8200 -> internal 5000/webhook)
     environment:
       - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
-      - MAIN_PATH=/app/repos
+      - MAIN_PATH=/tmp/repos
       - LOG_LEVEL=INFO
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -17,7 +17,7 @@ services:
       - POSTGRES_USER=github_sync
       - POSTGRES_PASSWORD=secure_password
     volumes:
-      - repos_data:/app/repos
+      - repos_data:/tmp/repos
       - /var/run/docker.sock:/var/run/docker.sock  # For Docker container management
       - ssh_keys:/home/appuser/.ssh
     depends_on:
@@ -27,7 +27,7 @@ services:
     networks:
       - github-sync-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/status", "||", "exit", "1"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
