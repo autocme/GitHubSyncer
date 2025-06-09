@@ -204,13 +204,40 @@ def containers_page(request: Request, db: Session = Depends(get_db), current_use
     })
 
 @router.get("/logs", response_class=HTMLResponse)
-def logs_page(request: Request, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
-    """Logs page"""
-    logs = db.query(OperationLog).order_by(OperationLog.created_at.desc()).limit(100).all()
+def logs_page(request: Request, page: int = 1, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    """Logs page with pagination"""
+    per_page = 20
+    offset = (page - 1) * per_page
+    
+    # Get total count for pagination
+    total_logs = db.query(OperationLog).count()
+    total_pages = (total_logs + per_page - 1) // per_page
+    
+    # Get logs for current page
+    logs = db.query(OperationLog).order_by(OperationLog.created_at.desc()).offset(offset).limit(per_page).all()
+    
+    # Calculate pagination info
+    has_prev = page > 1
+    has_next = page < total_pages
+    prev_page = page - 1 if has_prev else None
+    next_page = page + 1 if has_next else None
+    
     return templates.TemplateResponse("logs.html", {
         "request": request,
         "user": current_user,
-        "logs": logs
+        "logs": logs,
+        "pagination": {
+            "current_page": page,
+            "total_pages": total_pages,
+            "total_logs": total_logs,
+            "per_page": per_page,
+            "has_prev": has_prev,
+            "has_next": has_next,
+            "prev_page": prev_page,
+            "next_page": next_page,
+            "start_record": offset + 1,
+            "end_record": min(offset + per_page, total_logs)
+        }
     })
 
 @router.get("/settings", response_class=HTMLResponse)

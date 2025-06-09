@@ -560,10 +560,7 @@ function viewLogDetails(logId) {
     // TODO: Implement log details view
 }
 
-function loadMoreLogs() {
-    showToast('Load more logs feature coming soon', 'info');
-    // TODO: Implement pagination
-}
+// Pagination is now handled through URL parameters and server-side rendering
 
 // Change Password Function
 document.addEventListener('DOMContentLoaded', function() {
