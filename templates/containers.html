@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Containers - GitHub Sync Server</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-code-branch me-2"></i>
+                GitHub Sync Server
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/repositories">
+                            <i class="fas fa-code-branch me-1"></i>Repositories
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/containers">
+                            <i class="fab fa-docker me-1"></i>Containers
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logs">
+                            <i class="fas fa-list-alt me-1"></i>Logs
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings">
+                            <i class="fas fa-cog me-1"></i>Settings
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>{{ user.username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3">
+                        <i class="fab fa-docker me-2"></i>
+                        Docker Containers
+                    </h1>
+                    <button class="btn btn-primary" onclick="discoverContainers()">
+                        <i class="fas fa-search me-2"></i>
+                        Discover Containers
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Containers Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        {% if containers %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Image</th>
+                                        <th>Status</th>
+                                        <th>Restart After Pull</th>
+                                        <th>Last Restart</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for container in containers %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ container.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ container.container_id[:12] }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ container.image }}</span>
+                                        </td>
+                                        <td>
+                                            {% if container.status == 'running' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-play me-1"></i>Running
+                                                </span>
+                                            {% elif container.status == 'exited' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-stop me-1"></i>Exited
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-pause me-1"></i>{{ container.status }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if container.restart_after_pull %}
+                                                <span class="badge bg-info">{{ container.restart_after_pull }}</span>
+                                            {% else %}
+                                                <span class="text-muted">None</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if container.last_restart_time %}
+                                                <small>{{ container.last_restart_time.strftime('%Y-%m-%d %H:%M') }}</small>
+                                                {% if container.last_restart_success %}
+                                                    <i class="fas fa-check text-success ms-1"></i>
+                                                {% else %}
+                                                    <i class="fas fa-times text-danger ms-1"></i>
+                                                {% endif %}
+                                            {% else %}
+                                                <small class="text-muted">Never</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-primary" onclick="restartContainer('{{ container.container_id }}')" title="Restart Container">
+                                                    <i class="fas fa-redo"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" onclick="viewContainerDetails('{{ container.container_id }}')" title="View Details">
+                                                    <i class="fas fa-info-circle"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-5">
+                            <i class="fab fa-docker fa-3x text-muted mb-3"></i>
+                            <h5>No containers found</h5>
+                            <p class="text-muted">Docker containers will appear here after discovery</p>
+                            <button class="btn btn-primary" onclick="discoverContainers()">
+                                <i class="fas fa-search me-2"></i>
+                                Discover Containers
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Container Labels Info -->
+        {% if containers %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Container Labels
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>Restart After Pull Configuration:</strong><br>
+                            To automatically restart a container after a repository pull, add the label:
+                            <code>restart_after_pull=repository_name</code>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Container</th>
+                                        <th>Labels</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for container in containers %}
+                                    {% if container.labels %}
+                                    <tr>
+                                        <td><strong>{{ container.name }}</strong></td>
+                                        <td>
+                                            {% set labels = container.labels | from_json if container.labels else {} %}
+                                            {% if labels %}
+                                                {% for key, value in labels.items() %}
+                                                    <span class="badge bg-light text-dark me-1 mb-1">
+                                                        {{ key }}={{ value }}
+                                                    </span>
+                                                {% endfor %}
+                                            {% else %}
+                                                <span class="text-muted">No labels</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Container Details Modal -->
+    <div class="modal fade" id="containerDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fab fa-docker me-2"></i>
+                        Container Details
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="containerDetailsContent">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Sync Server - Setup</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container-fluid vh-100 d-flex align-items-center justify-content-center">
+        <div class="row w-100">
+            <div class="col-md-8 col-lg-6 mx-auto">
+                <div class="card shadow">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-cog fa-3x text-primary mb-3"></i>
+                            <h2 class="card-title">Initial Setup</h2>
+                            <p class="text-muted">Configure your GitHub Sync Server</p>
+                        </div>
+
+                        {% if error %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            {{ error }}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" action="/setup">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Admin Username *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                            <input type="text" class="form-control" id="username" name="username" required>
+                                        </div>
+                                        <div class="form-text">This will be your admin account</div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Admin Password *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">
+                                                <i class="fas fa-lock"></i>
+                                            </span>
+                                            <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                        </div>
+                                        <div class="form-text">Minimum 6 characters</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email (Optional)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-envelope"></i>
+                                    </span>
+                                    <input type="email" class="form-control" id="email" name="email">
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="main_path" class="form-label">Repository Path *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-folder"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="main_path" name="main_path" value="/repos" required>
+                                </div>
+                                <div class="form-text">Directory where repositories will be cloned</div>
+                            </div>
+
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-info-circle text-info me-2"></i>
+                                        Setup Information
+                                    </h6>
+                                    <ul class="mb-0 small">
+                                        <li>The admin account will have full access to all features</li>
+                                        <li>You can add more users and API keys later</li>
+                                        <li>The repository path should be accessible and writable</li>
+                                        <li>Docker must be running to manage containers</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-rocket me-2"></i>
+                                Complete Setup
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        GitHub Sync Server v1.0.0
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

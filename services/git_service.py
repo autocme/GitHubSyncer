@@ -1,0 +1,253 @@
+import os
+import subprocess
+import shutil
+from pathlib import Path
+from typing import Optional, Tuple
+from git import Repo, GitCommandError
+from sqlalchemy.orm import Session
+from models import Repository, OperationLog, GitKey, Setting
+from utils.logger import setup_logger
+from utils.helpers import extract_repo_name_from_url
+
+logger = setup_logger(__name__)
+
+class GitService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.main_path = self._get_main_path()
+    
+    def _get_main_path(self) -> str:
+        """Get the main path for repositories from settings"""
+        setting = self.db.query(Setting).filter(Setting.key == "main_path").first()
+        return setting.value if setting else "/repos"
+    
+    def _setup_ssh_key(self, repo_url: str) -> Optional[str]:
+        """Setup SSH key for private repository access"""
+        if not repo_url.startswith("git@"):
+            return None
+        
+        # Get active Git key
+        git_key = self.db.query(GitKey).filter(GitKey.is_active == True).first()
+        if not git_key:
+            logger.warning("No active Git key found for SSH repository")
+            return None
+        
+        # Create SSH key file
+        ssh_dir = Path.home() / ".ssh"
+        ssh_dir.mkdir(exist_ok=True, mode=0o700)
+        
+        key_file = ssh_dir / "github_sync_key"
+        with open(key_file, "w") as f:
+            f.write(git_key.private_key)
+        
+        key_file.chmod(0o600)
+        
+        # Create SSH config
+        config_file = ssh_dir / "config"
+        config_content = f"""
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile {key_file}
+    StrictHostKeyChecking no
+"""
+        
+        with open(config_file, "w") as f:
+            f.write(config_content)
+        
+        return str(key_file)
+    
+    def clone_repository(self, repo: Repository) -> Tuple[bool, str]:
+        """Clone a repository to local path"""
+        try:
+            repo_name = extract_repo_name_from_url(repo.url)
+            repo_path = Path(self.main_path) / repo_name
+            
+            # Remove existing directory if it exists
+            if repo_path.exists():
+                shutil.rmtree(repo_path)
+            
+            # Create parent directory
+            repo_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Setup SSH key if needed
+            ssh_key_file = self._setup_ssh_key(repo.url)
+            
+            # Clone repository
+            logger.info(f"Cloning repository {repo.url} to {repo_path}")
+            
+            if ssh_key_file:
+                # Use SSH key for cloning
+                env = os.environ.copy()
+                env['GIT_SSH_COMMAND'] = f'ssh -i {ssh_key_file} -o StrictHostKeyChecking=no'
+                git_repo = Repo.clone_from(repo.url, repo_path, branch=repo.branch, env=env)
+            else:
+                git_repo = Repo.clone_from(repo.url, repo_path, branch=repo.branch)
+            
+            # Update repository record
+            repo.local_path = str(repo_path)
+            repo.last_pull_success = True
+            repo.last_pull_time = None
+            repo.last_pull_error = None
+            
+            # Log operation
+            log_entry = OperationLog(
+                operation_type="clone",
+                repository_id=repo.id,
+                status="success",
+                message=f"Successfully cloned repository {repo_name}",
+                details=f"Cloned to {repo_path}"
+            )
+            self.db.add(log_entry)
+            self.db.commit()
+            
+            logger.info(f"Successfully cloned repository {repo_name}")
+            return True, f"Successfully cloned repository {repo_name}"
+            
+        except Exception as e:
+            error_msg = f"Failed to clone repository {repo.url}: {str(e)}"
+            logger.error(error_msg)
+            
+            repo.last_pull_success = False
+            repo.last_pull_error = error_msg
+            
+            # Log operation
+            log_entry = OperationLog(
+                operation_type="clone",
+                repository_id=repo.id,
+                status="error",
+                message=f"Failed to clone repository",
+                details=error_msg
+            )
+            self.db.add(log_entry)
+            self.db.commit()
+            
+            return False, error_msg
+    
+    def pull_repository(self, repo: Repository) -> Tuple[bool, str]:
+        """Pull latest changes from repository"""
+        try:
+            if not repo.local_path or not Path(repo.local_path).exists():
+                logger.info(f"Repository not found locally, cloning instead: {repo.url}")
+                return self.clone_repository(repo)
+            
+            # Setup SSH key if needed
+            ssh_key_file = self._setup_ssh_key(repo.url)
+            
+            # Open existing repository
+            git_repo = Repo(repo.local_path)
+            
+            # Configure SSH if needed
+            if ssh_key_file:
+                with git_repo.config_writer() as config:
+                    config.set_value("core", "sshCommand", f'ssh -i {ssh_key_file} -o StrictHostKeyChecking=no')
+            
+            # Fetch and pull
+            origin = git_repo.remotes.origin
+            origin.fetch()
+            
+            # Switch to correct branch if needed
+            if git_repo.active_branch.name != repo.branch:
+                git_repo.git.checkout(repo.branch)
+            
+            # Pull changes
+            origin.pull(repo.branch)
+            
+            # Update repository record
+            repo.last_pull_success = True
+            repo.last_pull_time = None
+            repo.last_pull_error = None
+            
+            # Log operation
+            log_entry = OperationLog(
+                operation_type="pull",
+                repository_id=repo.id,
+                status="success",
+                message=f"Successfully pulled repository {repo.name}",
+                details=f"Updated from {repo.url}"
+            )
+            self.db.add(log_entry)
+            self.db.commit()
+            
+            logger.info(f"Successfully pulled repository {repo.name}")
+            return True, f"Successfully pulled repository {repo.name}"
+            
+        except Exception as e:
+            error_msg = f"Failed to pull repository {repo.name}: {str(e)}"
+            logger.error(error_msg)
+            
+            repo.last_pull_success = False
+            repo.last_pull_error = error_msg
+            
+            # Log operation
+            log_entry = OperationLog(
+                operation_type="pull",
+                repository_id=repo.id,
+                status="error",
+                message=f"Failed to pull repository {repo.name}",
+                details=error_msg
+            )
+            self.db.add(log_entry)
+            self.db.commit()
+            
+            return False, error_msg
+    
+    def generate_ssh_key(self, name: str) -> Tuple[str, str]:
+        """Generate SSH key pair for Git authentication"""
+        try:
+            # Generate SSH key using ssh-keygen
+            key_file = f"/tmp/github_sync_{name}"
+            
+            subprocess.run([
+                "ssh-keygen", "-t", "rsa", "-b", "4096",
+                "-f", key_file, "-N", "", "-C", f"github-sync-{name}"
+            ], check=True, capture_output=True)
+            
+            # Read private key
+            with open(key_file, "r") as f:
+                private_key = f.read()
+            
+            # Read public key
+            with open(f"{key_file}.pub", "r") as f:
+                public_key = f.read()
+            
+            # Clean up temporary files
+            os.remove(key_file)
+            os.remove(f"{key_file}.pub")
+            
+            return private_key, public_key
+            
+        except Exception as e:
+            logger.error(f"Failed to generate SSH key: {e}")
+            raise Exception(f"Failed to generate SSH key: {e}")
+    
+    def validate_repository_url(self, url: str) -> bool:
+        """Validate if repository URL is accessible"""
+        try:
+            if url.startswith("https://"):
+                # For HTTPS URLs, try to fetch repository info
+                subprocess.run([
+                    "git", "ls-remote", "--heads", url
+                ], check=True, capture_output=True, timeout=30)
+                return True
+            elif url.startswith("git@"):
+                # For SSH URLs, check if SSH key is configured
+                git_key = self.db.query(GitKey).filter(GitKey.is_active == True).first()
+                if not git_key:
+                    return False
+                
+                # Try to access repository with SSH key
+                ssh_key_file = self._setup_ssh_key(url)
+                env = os.environ.copy()
+                env['GIT_SSH_COMMAND'] = f'ssh -i {ssh_key_file} -o StrictHostKeyChecking=no'
+                
+                subprocess.run([
+                    "git", "ls-remote", "--heads", url
+                ], check=True, capture_output=True, timeout=30, env=env)
+                return True
+            else:
+                return False
+                
+        except Exception as e:
+            logger.error(f"Repository validation failed for {url}: {e}")
+            return False
