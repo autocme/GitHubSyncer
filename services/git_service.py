@@ -3,6 +3,7 @@ import subprocess
 import shutil
 from pathlib import Path
 from typing import Optional, Tuple
+from datetime import datetime
 from git import Repo, GitCommandError
 from sqlalchemy.orm import Session
 from models import Repository, OperationLog, GitKey, Setting
@@ -168,7 +169,7 @@ Host github.com
             
             # Update repository record
             repo.last_pull_success = True
-            repo.last_pull_time = None
+            repo.last_pull_time = datetime.utcnow()
             repo.last_pull_error = None
             
             # Log operation
