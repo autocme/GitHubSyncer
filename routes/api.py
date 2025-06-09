@@ -37,9 +37,13 @@ def get_current_user(request: Request, authorization: str = Header(None), db: Se
     
     # First try session-based authentication (for web interface)
     user_id = request.session.get('user_id')
+    logger.debug(f"Session user_id: {user_id}")
+    logger.debug(f"Session data: {dict(request.session)}")
+    
     if user_id:
         from models import User
         user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+        logger.debug(f"Found user: {user.username if user else None}")
         if user:
             return user
     
