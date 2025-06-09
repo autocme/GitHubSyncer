@@ -6,18 +6,11 @@ This guide explains how to configure Docker containers for automatic restart aft
 
 The GitHub Sync Server can automatically restart Docker containers when specific repositories are updated via GitHub webhooks. This is accomplished using container labels that specify which repository updates should trigger a restart.
 
-## Supported Label Formats
+## Label Format
 
-The system supports multiple label formats for maximum compatibility:
+The system uses a single, simple label format:
 
-### Primary Format (Recommended)
 ```yaml
-restart_after_pull: "repository-name"
-```
-
-### Alternative Formats
-```yaml
-github-sync.restart-after: "repository-name"
 restart-after: "repository-name"
 ```
 

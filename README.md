@@ -71,13 +71,8 @@ This design provides flexible access while maintaining a simple architecture.
 
 The system automatically restarts Docker containers after repository updates using container labels. Multiple label formats are supported for flexibility:
 
-**Supported Label Formats:**
+**Label Format:**
 ```yaml
-# Primary format (recommended)
-restart_after_pull: "repository-name"
-
-# Alternative formats
-github-sync.restart-after: "repository-name"
 restart-after: "repository-name"
 ```
 
@@ -88,14 +83,14 @@ services:
   web-app:
     image: my-web-app:latest
     labels:
-      restart_after_pull: "my-web-repo"
+      restart-after: "my-web-repo"
     ports:
       - "3000:3000"
   
   api-service:
     image: my-api:latest
     labels:
-      github-sync.restart-after: "my-backend-api"
+      restart-after: "my-backend-api"
     ports:
       - "8080:8080"
 ```
@@ -105,20 +100,20 @@ services:
 # Simple container with restart label
 docker run -d \
   --name my-app \
-  --label "restart_after_pull=my-repo-name" \
+  --label "restart-after=my-repo-name" \
   my-image:latest
 
-# Multiple labels (only restart_after_pull is used)
+# Multiple labels (only restart-after is used)
 docker run -d \
   --name api-server \
-  --label "restart_after_pull=backend-repo" \
+  --label "restart-after=backend-repo" \
   --label "environment=production" \
   api:latest
 ```
 
 **How It Works:**
 1. **Add Repository**: Create repository "my-repo-name" in the web interface
-2. **Label Containers**: Add `restart_after_pull: "my-repo-name"` label to containers
+2. **Label Containers**: Add `restart-after: "my-repo-name"` label to containers
 3. **Automatic Discovery**: System discovers labeled containers when you click "Discover Containers"
 4. **Webhook Processing**: When GitHub webhook triggers for "my-repo-name":
    - Repository code is automatically pulled
