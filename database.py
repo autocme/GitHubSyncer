@@ -26,7 +26,7 @@ def init_db():
         with SessionLocal() as db:
             from models import Setting
             default_settings = [
-                {"key": "main_path", "value": "/repos", "description": "Main path for repositories"},
+                {"key": "main_path", "value": "/tmp/repos", "description": "Main path for repositories"},
                 {"key": "log_retention_days", "value": "30", "description": "Number of days to retain logs"},
                 {"key": "setup_complete", "value": "false", "description": "Whether initial setup is complete"},
             ]

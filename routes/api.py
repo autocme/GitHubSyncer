@@ -149,8 +149,8 @@ async def sync_repository(repo_id: int, db: Session = Depends(get_db), current_u
     webhook_service = WebhookService(db)
     result = await webhook_service.manual_sync_repository(repo_id)
     
-    if not result["success"]:
-        raise HTTPException(status_code=500, detail=result["message"])
+    if not result.get("success", False):
+        raise HTTPException(status_code=500, detail=result.get("message", "Failed to sync repository"))
     
     return result
 
