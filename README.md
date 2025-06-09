@@ -1,166 +1,262 @@
-# GitHub Sync Webhook Service
+# GitHub Sync Server
 
-A robust FastAPI-based GitHub webhook server designed for secure and intelligent repository management with advanced deployment capabilities.
+A robust FastAPI-based webhook server for automatic GitHub repository synchronization and Docker container management.
 
 ## Features
 
-- **FastAPI Backend** with enhanced security protocols
-- **Intelligent Docker Container Management** - automatically restart containers based on labels
-- **Comprehensive GitHub Webhook Integration** - listen for push events and auto-sync
-- **Advanced Error Handling** and logging mechanisms
-- **Responsive Web Interface** with dynamic user experience
-- **Multi-Repository Support** - manage multiple public/private repositories
-- **SSH Key Management** for private repository access
-- **API Key Authentication** for secure API access
-- **Comprehensive Logging** with pagination and filtering
-- **Docker Deployment Ready** with Portainer Custom Templates support
+- **GitHub Webhook Integration**: Automatic repository updates on push events
+- **Docker Container Management**: Intelligent restart of containers after code updates
+- **Multi-Repository Support**: Handle multiple repositories with individual configurations
+- **SSH Key Management**: Secure access to private repositories
+- **Web Dashboard**: Comprehensive management interface
+- **API Access**: RESTful API with authentication
+- **PostgreSQL/SQLite Support**: Flexible database options
+- **Container Discovery**: Automatic detection of Docker containers
+- **Operation Logging**: Detailed logs of all operations
+- **Health Monitoring**: Built-in health checks and status monitoring
 
-## Quick Start with Docker
+## Quick Start
 
-### Using Docker Compose
+### Docker Deployment (Recommended)
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
-git clone https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service.git
-cd GitHub-Sync-Webhook-Service
+git clone <your-repo-url>
+cd github-sync-server
 ```
 
-2. Start the services:
+2. **Deploy with Docker Compose:**
 ```bash
 docker-compose up -d
 ```
 
-3. Access the web interface at `http://localhost:5000`
+3. **Access the application:**
+- Web Interface: http://localhost:5000
+- Webhook Endpoint: http://localhost:8200/webhook
 
-### Using Portainer Custom Templates
+### Portainer Deployment
 
-1. Add the template URL to your Portainer instance:
-   - Go to **App Templates** → **Custom Templates**
-   - Add template URL: `https://raw.githubusercontent.com/ahmedkhamis12/GitHub-Sync-Webhook-Service/main/portainer-template.json`
-
-2. Deploy the **GitHub Sync Webhook Service** template
-
-3. Configure environment variables as needed
-
-## Manual Installation
-
-### Prerequisites
-
-- Python 3.11+
-- PostgreSQL database
-- Docker (for container management)
-- Git
-
-### Installation Steps
-
-1. Clone the repository:
-```bash
-git clone https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service.git
-cd GitHub-Sync-Webhook-Service
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Set environment variables:
-```bash
-export DATABASE_URL="postgresql://user:password@localhost:5432/github_sync"
-export MAIN_PATH="/path/to/repositories"
-```
-
-4. Run the application:
-```bash
-python main.py
-```
+Use the included `portainer-template.json` for one-click deployment in Portainer's Custom Templates section.
 
 ## Configuration
+
+### Port Configuration
+
+The application uses a single FastAPI server with dual port mapping:
+- **Internal Port**: 5000 (single service)
+- **External Ports**: 
+  - 5000 → Web interface access
+  - 8200 → Webhook endpoint (maps to same service)
+
+This design provides flexible access while maintaining a simple architecture.
 
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `MAIN_PATH` | Path for repository storage | `/tmp/repos` |
+| `DATABASE_URL` | Database connection string | SQLite |
+| `MAIN_PATH` | Repository storage path | `/app/repos` |
 | `LOG_LEVEL` | Logging level | `INFO` |
+| `POSTGRES_*` | PostgreSQL connection details | - |
 
 ### GitHub Webhook Setup
 
-1. In your GitHub repository settings, go to **Webhooks**
-2. Add webhook URL: `http://your-server:8200/api/v1/webhook/github`
-3. Select **Push events**
-4. Set content type to `application/json`
+1. Go to your repository Settings → Webhooks
+2. Add webhook URL: `http://your-server:8200/webhook`
+3. Content type: `application/json`
+4. Events: Push events (or all events)
+5. Active: ✓
 
-## Docker Container Labels
+### Container Labels
 
-To automatically restart containers when repositories are updated, add this label:
+Configure containers for automatic restart after repository updates:
 
-```yaml
-labels:
-  - "restart_after_pull=repository-name"
+```bash
+docker run -d --label "restart_after_pull=my-repo-name" my-app:latest
 ```
 
-Example Docker Compose service:
+## Initial Setup
+
+1. **First Access**: Navigate to http://localhost:5000
+2. **Setup Wizard**: Complete the initial configuration
+3. **Create Admin**: Set up administrator credentials
+4. **Configure Repositories**: Add your Git repositories
+5. **Setup SSH Keys**: Configure authentication for private repos
+6. **Test Webhooks**: Verify GitHub integration
+
+## API Documentation
+
+### Authentication
+
+The API supports multiple authentication methods:
+- Session-based (web interface)
+- API key authentication
+- JWT tokens
+
+### Key Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/repositories` | GET/POST | Repository management |
+| `/api/v1/containers` | GET | Container listing |
+| `/api/v1/logs` | GET | Operation logs |
+| `/api/v1/status` | GET | System status |
+| `/webhook/github` | POST | GitHub webhook |
+
+## Docker Configuration
+
+### Development
+
 ```yaml
+version: '3.8'
 services:
-  my-app:
-    image: my-app:latest
-    labels:
-      - "restart_after_pull=my-repository"
+  github-sync:
+    build: .
+    ports:
+      - "5000:5000"
+      - "8200:5000"
+    volumes:
+      - ./repos:/app/repos
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DATABASE_URL=sqlite:///app/data/app.db
 ```
 
-## API Endpoints
+### Production
 
-### Web Interface
-- `GET /` - Dashboard
-- `GET /repositories` - Repository management
-- `GET /containers` - Container management
-- `GET /logs` - Operation logs
-- `GET /settings` - System settings
+```yaml
+version: '3.8'
+services:
+  github-sync:
+    build: .
+    ports:
+      - "5000:5000"
+      - "8200:5000"
+    volumes:
+      - repos_data:/app/repos
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DATABASE_URL=postgresql://user:pass@postgres:5432/db?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=github_sync_db
+      - POSTGRES_USER=github_sync
+      - POSTGRES_PASSWORD=secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U github_sync"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+```
 
-### API Endpoints
-- `POST /api/v1/webhook/github` - GitHub webhook endpoint
-- `GET /api/v1/repositories` - List repositories
-- `POST /api/v1/repositories` - Create repository
-- `POST /api/v1/repositories/{id}/sync` - Manual sync
-- `GET /api/v1/containers` - List containers
-- `POST /api/v1/containers/discover` - Discover containers
-- `GET /api/v1/logs` - Get operation logs
-- `DELETE /api/v1/logs` - Clear all logs
+## Security
 
-## Security Features
+### Production Checklist
 
-- **Session-based Authentication** with secure cookies
-- **API Key Authentication** for programmatic access
-- **Rate Limiting** on login attempts
-- **IP-based Security** tracking
-- **SSH Key Management** for private repositories
-- **Input Validation** and sanitization
+- [ ] Change default PostgreSQL passwords
+- [ ] Use HTTPS with SSL certificates
+- [ ] Configure webhook secrets
+- [ ] Set up proper firewall rules
+- [ ] Use environment files for secrets
+- [ ] Regular security updates
+- [ ] Limit Docker socket access
 
-## Logging and Monitoring
+### Network Security
 
-- **Comprehensive Operation Logs** with timestamps
-- **Pagination Support** for large log sets
-- **Log Filtering** by operation type and status
-- **Real-time Status Updates** for repositories and containers
-- **Health Check Endpoints** for monitoring
+- Isolated Docker networks
+- Health checks for all services
+- Service dependencies properly configured
+- Non-root user execution where possible
 
-## Docker Deployment
+## Monitoring
 
-The project includes production-ready Docker configuration:
+### Health Checks
 
-- **Dockerfile** - Multi-stage build with security best practices
-- **docker-compose.yml** - Complete stack with PostgreSQL
-- **portainer-template.json** - Portainer Custom Templates support
+```bash
+# Application health
+curl http://localhost:5000/api/v1/status
 
-### Security Considerations
+# Database health (PostgreSQL)
+docker exec postgres pg_isready -U github_sync
 
-- Non-root user execution
-- Minimal attack surface
-- Health checks included
-- Volume mounts for data persistence
-- Network isolation
+# Container status
+docker-compose ps
+```
+
+### Logs
+
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f github-sync
+
+# Application logs in web interface
+# Navigate to Logs section in dashboard
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Port 8200 not accessible**
+   - This is expected when not running in Docker
+   - The dual port mapping only works with Docker deployment
+
+2. **Docker socket permission denied**
+   - Add user to docker group: `sudo usermod -aG docker $USER`
+   - Restart the session
+
+3. **Database connection issues**
+   - Check DATABASE_URL format
+   - Verify PostgreSQL container is running
+   - Ensure `?sslmode=disable` for PostgreSQL
+
+4. **Repository clone failures**
+   - Configure SSH keys in Settings
+   - Check repository URL format
+   - Verify network connectivity
+
+5. **Webhook not triggering**
+   - Check GitHub webhook delivery logs
+   - Verify external access to port 8200
+   - Test with curl: `curl -X POST http://your-server:8200/webhook/test`
+
+## Development
+
+### Running Locally
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+export DATABASE_URL=sqlite:///./app.db
+export MAIN_PATH=./repos
+
+# Run development server
+python main.py
+```
+
+### Testing
+
+```bash
+# Run deployment tests
+python test_deployment.py
+
+# Test webhook endpoint
+curl -X POST http://localhost:5000/webhook/github \
+  -H "Content-Type: application/json" \
+  -d '{"ref":"refs/heads/main","repository":{"name":"test"}}'
+```
 
 ## Contributing
 
@@ -177,6 +273,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 For issues and questions:
-- Create an issue on GitHub
-- Check the logs at `/logs` page
-- Review the system status at `/dashboard`
+1. Check the troubleshooting section
+2. Review the logs in the web interface
+3. Create an issue on GitHub with detailed information
