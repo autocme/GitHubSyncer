@@ -127,26 +127,26 @@ body {
 /* Tables */
 .table {
     margin-bottom: 0;
-    color: #212529 !important;
+    color: #ffffff !important;
 }
 
 .table th {
     font-weight: 600;
-    color: #495057 !important;
+    color: #ffffff !important;
     border-top: none;
-    background-color: #f8f9fa;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .table td {
-    color: #212529 !important;
+    color: #ffffff !important;
 }
 
 .table-hover tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.025);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .table-hover tbody tr:hover td {
-    color: #212529 !important;
+    color: #ffffff !important;
 }
 
 /* Forms */
