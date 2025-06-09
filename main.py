@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 from database import init_db, get_db
 from routes import api, web, webhook
@@ -27,6 +28,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Add session middleware
+app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY", "github-sync-secret-key-change-in-production"))
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
