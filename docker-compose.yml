@@ -5,8 +5,8 @@ services:
     build: .
     container_name: github-sync-server
     ports:
-      - "5000:5000"
-      - "8200:8200"  # Webhook port
+      - "5000:5000"  # Web interface
+      - "8200:5000"  # Webhook port (external 8200 -> internal 5000/webhook)
     environment:
       - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
       - MAIN_PATH=/app/repos
