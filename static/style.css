@@ -158,6 +158,32 @@ body {
     opacity: 1;
 }
 
+/* Table Form Controls */
+.table .form-control {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border: 1px solid #ced4da !important;
+}
+
+.table .form-control:focus {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border-color: var(--primary-color) !important;
+}
+
+/* Input fields in dark sections */
+input[type="text"], input[type="password"], input[type="email"], input[type="url"], textarea, select {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border: 1px solid #ced4da !important;
+}
+
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus, input[type="url"]:focus, textarea:focus, select:focus {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border-color: var(--primary-color) !important;
+}
+
 .form-select {
     border-radius: var(--border-radius);
 }
