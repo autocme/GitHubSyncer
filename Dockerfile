@@ -11,9 +11,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directory for repositories with proper permissions
-RUN mkdir -p /repos && chmod 755 /repos
-
 # Copy requirements
 COPY pyproject.toml uv.lock ./
 
@@ -23,9 +20,11 @@ RUN pip install uv && uv pip install --system --no-cache .
 # Copy application code
 COPY . .
 
-# Create non-root user
+# Create non-root user and setup directories
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+    mkdir -p /repos && \
+    chown -R appuser:appuser /app /repos && \
+    chmod -R 755 /repos
 USER appuser
 
 # Expose port

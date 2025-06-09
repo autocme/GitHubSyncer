@@ -5,82 +5,52 @@ The GitHub Sync Server supports bind mounts for persistent repository storage ac
 - **Development (Replit)**: Uses writable workspace directory
 - **Production (Docker)**: Uses `/repos` for bind mount compatibility
 
-## Docker Compose Configuration with Bind Mounts
+## Docker Deployment with Bind Mounts
 
-### Option 1: Use bind mount to host directory
-```yaml
-version: '3.8'
+The project includes an automated deployment script and properly configured Docker Compose setup.
 
-services:
-  github-sync:
-    build: .
-    container_name: github-sync-server
-    ports:
-      - "5000:5000"  # Web interface
-      - "8200:5000"  # Webhook port
-    environment:
-      - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
-      - MAIN_PATH=/repos
-      - LOG_LEVEL=INFO
-    volumes:
-      - ./host-repos:/repos  # Bind mount host directory to container /repos
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ssh_keys:/home/appuser/.ssh
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - github-sync-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+### Quick Start
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: github-sync-postgres
-    environment:
-      - POSTGRES_DB=github_sync_db
-      - POSTGRES_USER=github_sync
-      - POSTGRES_PASSWORD=secure_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - github-sync-network
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U github_sync -d github_sync_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-volumes:
-  postgres_data:
-    driver: local
-  ssh_keys:
-    driver: local
-
-networks:
-  github-sync-network:
-    driver: bridge
+1. **Run the deployment script:**
+```bash
+chmod +x deploy-docker.sh
+./deploy-docker.sh
 ```
 
-### Option 2: Use absolute path bind mount
-```yaml
-volumes:
-  - /path/to/your/repositories:/repos  # Absolute path on host
+2. **Or manual setup:**
+```bash
+# Create and set up host directory
+mkdir -p ./host-repos
+sudo chown -R 1000:1000 ./host-repos
+chmod 755 ./host-repos
+
+# Deploy with Docker Compose
+docker-compose up -d
 ```
 
-### Option 3: Use named volume (current setup)
+### Docker Compose Configuration (Current)
+
+The `docker-compose.yml` is already configured with proper bind mounts:
+
 ```yaml
 volumes:
-  - repos_data:/repos  # Named Docker volume
+  - ./host-repos:/repos:rw  # Bind mount with read-write permissions
+  - /var/run/docker.sock:/var/run/docker.sock
+  - ssh_keys:/home/appuser/.ssh
+```
+
+### Alternative Bind Mount Options
+
+#### Option 1: Absolute path bind mount
+```yaml
+volumes:
+  - /path/to/your/repositories:/repos:rw
+```
+
+#### Option 2: Named volume (for simple setups)
+```yaml
+volumes:
+  - repos_data:/repos
 ```
 
 ## Directory Setup
