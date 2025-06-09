@@ -242,6 +242,33 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focu
     color: #212529 !important;
 }
 
+/* White text styling for empty state messages */
+.text-center h5 {
+    color: #ffffff !important;
+}
+
+.text-center p {
+    color: #ffffff !important;
+}
+
+/* White text for dashboard cards */
+.dashboard-card h4 {
+    color: #ffffff !important;
+}
+
+.dashboard-card p {
+    color: #ffffff !important;
+}
+
+/* White text for card headers when needed */
+.card-header h5 {
+    color: #ffffff !important;
+}
+
+.card-header h6 {
+    color: #ffffff !important;
+}
+
 .input-group {
     border-radius: var(--border-radius);
 }
