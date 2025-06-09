@@ -57,7 +57,13 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         error_msg = f"Error processing webhook: {str(e)}"
         logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg)
+        
+        # Return error response instead of raising exception
+        return {
+            "status": "error",
+            "message": error_msg,
+            "details": {"error": str(e)}
+        }
 
 @router.get("/test")
 async def test_webhook(db: Session = Depends(get_db)):
