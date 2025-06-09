@@ -30,18 +30,22 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
         # Process webhook
         result = await webhook_service.process_github_webhook(payload)
         
-        if result["success"]:
-            logger.info(f"Webhook processed successfully: {result['message']}")
+        # Handle response safely
+        success = result.get("success", False)
+        message = result.get("message", "Unknown result")
+        
+        if success:
+            logger.info(f"Webhook processed successfully: {message}")
             return {
                 "status": "success",
-                "message": result["message"],
+                "message": message,
                 "details": result
             }
         else:
-            logger.error(f"Webhook processing failed: {result['message']}")
+            logger.error(f"Webhook processing failed: {message}")
             return {
                 "status": "error",
-                "message": result["message"],
+                "message": message,
                 "details": result
             }
     
