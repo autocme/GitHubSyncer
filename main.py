@@ -44,10 +44,15 @@ app.include_router(webhook.router, prefix="/webhook", tags=["webhook"])
 templates = Jinja2Templates(directory="templates")
 
 if __name__ == "__main__":
+    import os
+    
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=5000,
-        reload=True,
+        port=port,
+        reload=False,  # Disable reload in production
         log_level="info"
     )

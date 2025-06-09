@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  github-sync:
+    build: .
+    container_name: github-sync-server
+    ports:
+      - "5000:5000"
+      - "8200:8200"  # Webhook port
+    environment:
+      - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db
+      - MAIN_PATH=/app/repos
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./repos:/app/repos
+      - /var/run/docker.sock:/var/run/docker.sock  # For Docker container management
+      - ssh_keys:/home/appuser/.ssh
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - github-sync-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.github-sync.rule=Host(`github-sync.local`)"
+      - "traefik.http.services.github-sync.loadbalancer.server.port=5000"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: github-sync-postgres
+    environment:
+      - POSTGRES_DB=github_sync_db
+      - POSTGRES_USER=github_sync
+      - POSTGRES_PASSWORD=secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - github-sync-network
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+    driver: local
+  ssh_keys:
+    driver: local
+
+networks:
+  github-sync-network:
+    driver: bridge
