@@ -215,119 +215,9 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focu
     color: #212529 !important;
 }
 
-/* General text elements */
-h1, h2, h3, h4, h5, h6 {
-    color: #212529 !important;
-}
-
-p, span, div, label {
-    color: #212529 !important;
-}
-
-/* Modal elements */
-.modal-header {
-    color: #212529 !important;
-}
-
-.modal-body {
-    color: #212529 !important;
-}
-
+/* Specific text elements that need color fixes */
 .modal-title {
     color: #212529 !important;
-}
-
-/* List elements */
-ul, ol, li {
-    color: #212529 !important;
-}
-
-/* Links */
-a {
-    color: var(--primary-color) !important;
-}
-
-a:hover {
-    color: #0a58ca !important;
-}
-
-/* Small text elements */
-small, .small {
-    color: #6c757d !important;
-}
-
-/* Code elements */
-code, pre {
-    color: #212529 !important;
-    background-color: #f8f9fa !important;
-}
-
-/* Button text colors */
-.btn {
-    color: #ffffff !important;
-}
-
-.btn-primary {
-    color: #ffffff !important;
-}
-
-.btn-secondary {
-    color: #ffffff !important;
-}
-
-.btn-success {
-    color: #ffffff !important;
-}
-
-.btn-danger {
-    color: #ffffff !important;
-}
-
-.btn-warning {
-    color: #000000 !important;
-}
-
-.btn-info {
-    color: #000000 !important;
-}
-
-.btn-light {
-    color: #212529 !important;
-}
-
-.btn-dark {
-    color: #ffffff !important;
-}
-
-.btn-outline-primary {
-    color: var(--primary-color) !important;
-}
-
-.btn-outline-secondary {
-    color: #6c757d !important;
-}
-
-.btn-outline-success {
-    color: var(--success-color) !important;
-}
-
-.btn-outline-danger {
-    color: var(--danger-color) !important;
-}
-
-.btn-outline-warning {
-    color: var(--warning-color) !important;
-}
-
-.btn-outline-info {
-    color: var(--info-color) !important;
-}
-
-/* Badge text colors are already handled above */
-
-/* Dropdown menu items */
-.dropdown-menu {
-    background-color: #ffffff !important;
 }
 
 .dropdown-item {
@@ -339,16 +229,16 @@ code, pre {
     color: #212529 !important;
 }
 
-/* Toast notifications */
-.toast {
-    color: #212529 !important;
+/* Only fix button text where needed */
+.btn-warning {
+    color: #000000 !important;
 }
 
-.toast-header {
-    color: #212529 !important;
+.btn-info {
+    color: #000000 !important;
 }
 
-.toast-body {
+.btn-light {
     color: #212529 !important;
 }
 
