@@ -239,6 +239,25 @@ h1, h2, h3 {
     color: #ffffff !important;
 }
 
+/* Settings page specific styling */
+h6 {
+    color: #ffffff !important;
+}
+
+/* Card content text */
+.card-body h6 {
+    color: #ffffff !important;
+}
+
+.card-body small {
+    color: #ffffff !important;
+}
+
+/* Tab content styling */
+.tab-pane h6 {
+    color: #ffffff !important;
+}
+
 /* Specific text elements that need color fixes */
 .modal-title {
     color: #212529 !important;
