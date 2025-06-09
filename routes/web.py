@@ -114,13 +114,17 @@ def login(
     db: Session = Depends(get_db)
 ):
     """Handle login"""
+    # Get client IP and user agent for rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "")
+    
     auth_service = AuthService(db)
-    user = auth_service.authenticate_user(username, password)
+    user, error_msg = auth_service.authenticate_user(username, password, client_ip, user_agent)
     
     if not user:
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "error": "Invalid username or password"
+            "error": error_msg or "Invalid username or password"
         })
     
     # Set session data for API authentication

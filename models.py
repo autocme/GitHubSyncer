@@ -17,6 +17,16 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class LoginAttempt(Base):
+    __tablename__ = "login_attempts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), nullable=False, index=True)
+    ip_address = Column(String(45), nullable=False)  # IPv6 support
+    success = Column(Boolean, nullable=False)
+    attempt_time = Column(DateTime, default=datetime.utcnow)
+    user_agent = Column(String(500), nullable=True)
+
 class Repository(Base):
     __tablename__ = "repositories"
     

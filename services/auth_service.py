@@ -4,7 +4,7 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
-from models import User, ApiKey, Setting
+from models import User, ApiKey, Setting, LoginAttempt
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -62,24 +62,103 @@ class AuthService:
             logger.error(f"Error creating user {username}: {e}")
             return False, f"Error creating user: {str(e)}"
     
-    def authenticate_user(self, username: str, password: str) -> Optional[User]:
+    def check_login_rate_limit(self, username: str, ip_address: str) -> Tuple[bool, Optional[str]]:
+        """Check if login attempts are rate limited"""
+        try:
+            now = datetime.utcnow()
+            
+            # Get failed attempts for this username/IP in the last 24 hours
+            failed_attempts = self.db.query(LoginAttempt).filter(
+                LoginAttempt.username == username,
+                LoginAttempt.ip_address == ip_address,
+                LoginAttempt.success == False,
+                LoginAttempt.attempt_time > now - timedelta(hours=24)
+            ).order_by(LoginAttempt.attempt_time.desc()).all()
+            
+            if not failed_attempts:
+                return True, None
+            
+            failed_count = len(failed_attempts)
+            last_attempt = failed_attempts[0].attempt_time
+            
+            # Progressive rate limiting
+            if failed_count >= 12:
+                # 12+ attempts: 1 hour wait
+                wait_until = last_attempt + timedelta(hours=1)
+                if now < wait_until:
+                    remaining = int((wait_until - now).total_seconds())
+                    return False, f"Too many failed attempts. Try again in {remaining // 60} minutes."
+                    
+            elif failed_count >= 6:
+                # 6+ attempts: 30 minutes wait
+                wait_until = last_attempt + timedelta(minutes=30)
+                if now < wait_until:
+                    remaining = int((wait_until - now).total_seconds())
+                    return False, f"Too many failed attempts. Try again in {remaining // 60} minutes."
+                    
+            elif failed_count >= 3:
+                # 3+ attempts: 30 seconds wait
+                wait_until = last_attempt + timedelta(seconds=30)
+                if now < wait_until:
+                    remaining = int((wait_until - now).total_seconds())
+                    return False, f"Too many failed attempts. Try again in {remaining} seconds."
+            
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Rate limit check error: {str(e)}")
+            return True, None  # Allow login on error to avoid lockout
+    
+    def record_login_attempt(self, username: str, ip_address: str, success: bool, user_agent: str = None):
+        """Record a login attempt"""
+        try:
+            attempt = LoginAttempt(
+                username=username,
+                ip_address=ip_address,
+                success=success,
+                user_agent=user_agent,
+                attempt_time=datetime.utcnow()
+            )
+            self.db.add(attempt)
+            self.db.commit()
+            
+            # Clean up old attempts (older than 7 days)
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            self.db.query(LoginAttempt).filter(
+                LoginAttempt.attempt_time < cutoff
+            ).delete()
+            self.db.commit()
+            
+        except Exception as e:
+            logger.error(f"Failed to record login attempt: {str(e)}")
+    
+    def authenticate_user(self, username: str, password: str, ip_address: str = "unknown", user_agent: str = None) -> Tuple[Optional[User], Optional[str]]:
         """Authenticate user with username and password"""
         try:
+            # Check rate limiting first
+            allowed, rate_limit_msg = self.check_login_rate_limit(username, ip_address)
+            if not allowed:
+                return None, rate_limit_msg
+            
             user = self.db.query(User).filter(
                 User.username == username,
                 User.is_active == True
             ).first()
             
             if user and self.verify_password(password, user.password_hash):
+                # Successful login
+                self.record_login_attempt(username, ip_address, True, user_agent)
                 logger.info(f"User authenticated: {username}")
-                return user
-            
-            logger.warning(f"Authentication failed for user: {username}")
-            return None
-            
+                return user, None
+            else:
+                # Failed login
+                self.record_login_attempt(username, ip_address, False, user_agent)
+                logger.warning(f"Authentication failed for user: {username}")
+                return None, "Invalid username or password"
+                
         except Exception as e:
             logger.error(f"Error authenticating user {username}: {e}")
-            return None
+            return None, "Authentication error occurred"
     
     def create_jwt_token(self, user: User) -> str:
         """Create JWT token for user"""
