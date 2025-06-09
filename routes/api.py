@@ -39,8 +39,8 @@ def get_current_user(request: Request, authorization: str = Header(None), db: Se
     user_id = request.session.get('user_id')
     if user_id:
         from models import User
-        user = db.query(User).filter(User.id == user_id).first()
-        if user and user.is_active:
+        user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+        if user:
             return user
     
     # Then try API key or JWT token from Authorization header
@@ -212,10 +212,18 @@ def revoke_api_key(key_id: int, db: Session = Depends(get_db), current_user = De
 def get_git_keys(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Get Git SSH keys"""
     git_keys = db.query(GitKey).filter(GitKey.is_active == True).all()
-    # Don't return private keys in API response
-    for key in git_keys:
-        key.private_key = "[HIDDEN]"
-    return git_keys
+    # Return safe response without private keys
+    return [
+        {
+            "id": key.id,
+            "name": key.name,
+            "public_key": key.public_key,
+            "is_active": key.is_active,
+            "created_at": key.created_at,
+            "private_key": "[HIDDEN]"
+        }
+        for key in git_keys
+    ]
 
 @router.post("/git-keys")
 def create_git_key(key_data: GitKeyCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
@@ -253,7 +261,8 @@ def delete_git_key(key_id: int, db: Session = Depends(get_db), current_user = De
     if not git_key:
         raise HTTPException(status_code=404, detail="Git key not found")
     
-    git_key.is_active = False
+    # Update the record to mark as inactive
+    db.query(GitKey).filter(GitKey.id == key_id).update({"is_active": False})
     db.commit()
     
     logger.info(f"Deleted Git SSH key: {git_key.name}")

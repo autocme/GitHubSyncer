@@ -190,8 +190,8 @@
 
                         <div class="mb-3">
                             <label for="repoUrl" class="form-label">Repository URL *</label>
-                            <input type="url" class="form-control" id="repoUrl" required placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git">
-                            <div class="form-text">HTTPS or SSH URL of the repository</div>
+                            <input type="url" class="form-control" id="repoUrl" required placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git" oninput="onRepoUrlChange()">
+                            <div class="form-text">HTTPS or SSH URL of the repository (name will be auto-filled)</div>
                         </div>
 
                         <div class="mb-3">
