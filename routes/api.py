@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -31,23 +31,31 @@ class ApiKeyCreate(BaseModel):
 class GitKeyCreate(BaseModel):
     name: str
 
-# Authentication dependency
-def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-    
-    token = authorization.split(" ")[1]
+# Authentication dependency that supports both session cookies and API keys
+def get_current_user(request: Request, authorization: str = Header(None), db: Session = Depends(get_db)):
     auth_service = AuthService(db)
     
-    # Try JWT token first
-    user = auth_service.verify_jwt_token(token)
-    if user:
-        return user
+    # First try session-based authentication (for web interface)
+    user_id = request.session.get('user_id')
+    if user_id:
+        from models import User
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and user.is_active:
+            return user
     
-    # Try API key
-    user = auth_service.verify_api_key(token)
-    if user:
-        return user
+    # Then try API key or JWT token from Authorization header
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        
+        # Try JWT token first
+        user = auth_service.verify_jwt_token(token)
+        if user:
+            return user
+        
+        # Try API key
+        user = auth_service.verify_api_key(token)
+        if user:
+            return user
     
     raise HTTPException(status_code=401, detail="Invalid token")
 

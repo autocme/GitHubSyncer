@@ -5,8 +5,11 @@ let authToken = null;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Get auth token from cookie
-    authToken = getCookie('auth_token');
+    // Get CSRF token from meta tag or use session auth
+    const csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) {
+        authToken = csrfToken.getAttribute('content');
+    }
     
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -106,11 +109,17 @@ function copyWebhookUrl() {
 // API Functions
 async function apiRequest(url, options = {}) {
     const defaultOptions = {
+        method: 'GET',
+        credentials: 'include',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
+            'Content-Type': 'application/json'
         }
     };
+    
+    // Only add Authorization header if we have a token
+    if (authToken) {
+        defaultOptions.headers['Authorization'] = `Bearer ${authToken}`;
+    }
     
     const finalOptions = {
         ...defaultOptions,
@@ -184,21 +193,82 @@ async function discoverContainers() {
     }
 }
 
+// Utility function to extract repository name from URL
+function extractRepoNameFromUrl(url) {
+    try {
+        // Remove .git suffix if present
+        let cleanUrl = url.replace(/\.git$/, '');
+        
+        // Extract from various URL formats
+        let match;
+        
+        // GitHub format: https://github.com/user/repo
+        match = cleanUrl.match(/github\.com[\/:]([^\/]+)\/([^\/]+)/);
+        if (match) return match[2];
+        
+        // GitLab format: https://gitlab.com/user/repo
+        match = cleanUrl.match(/gitlab\.com[\/:]([^\/]+)\/([^\/]+)/);
+        if (match) return match[2];
+        
+        // Bitbucket format: https://bitbucket.org/user/repo
+        match = cleanUrl.match(/bitbucket\.org[\/:]([^\/]+)\/([^\/]+)/);
+        if (match) return match[2];
+        
+        // Generic Git SSH format: git@host:user/repo
+        match = cleanUrl.match(/git@[^:]+:([^\/]+)\/([^\/]+)/);
+        if (match) return match[2];
+        
+        // Generic HTTPS format: https://host/user/repo
+        match = cleanUrl.match(/https?:\/\/[^\/]+\/(?:[^\/]+\/)*([^\/]+)$/);
+        if (match) return match[1];
+        
+        // Fallback: get last part of path
+        const parts = cleanUrl.split('/');
+        return parts[parts.length - 1] || '';
+        
+    } catch (error) {
+        return '';
+    }
+}
+
+// Auto-fill repository name when URL changes
+function onRepoUrlChange() {
+    const urlInput = document.getElementById('repoUrl');
+    const nameInput = document.getElementById('repoName');
+    
+    if (urlInput && nameInput && urlInput.value && !nameInput.value) {
+        const extractedName = extractRepoNameFromUrl(urlInput.value);
+        if (extractedName) {
+            nameInput.value = extractedName;
+        }
+    }
+}
+
 // Repository Functions
 async function addRepository() {
     const name = document.getElementById('repoName').value.trim();
     const url = document.getElementById('repoUrl').value.trim();
     const branch = document.getElementById('repoBranch').value.trim() || 'main';
     
-    if (!name || !url) {
-        showToast('Please fill in all required fields', 'warning');
+    if (!url) {
+        showToast('Please enter a repository URL', 'warning');
         return;
+    }
+    
+    // Auto-generate name if not provided
+    let finalName = name;
+    if (!finalName) {
+        finalName = extractRepoNameFromUrl(url);
+        if (!finalName) {
+            showToast('Please provide a repository name', 'warning');
+            return;
+        }
     }
     
     try {
         const response = await apiRequest('/api/v1/repositories', {
             method: 'POST',
-            body: JSON.stringify({ name, url, branch })
+            body: JSON.stringify({ name: finalName, url, branch })
         });
         
         showToast('Repository added successfully', 'success');
