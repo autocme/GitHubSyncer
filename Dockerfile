@@ -25,6 +25,11 @@ RUN useradd -m -u 1000 appuser && \
     mkdir -p /repos && \
     chown -R appuser:appuser /app /repos && \
     chmod -R 755 /repos
+
+# Add entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 USER appuser
 
 # Expose port
@@ -38,5 +43,5 @@ ENV MAIN_PATH=/repos
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:5000/api/v1/health || exit 1
 
-# Run the application
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+# Use entrypoint script for automatic setup
+ENTRYPOINT ["/entrypoint.sh"]

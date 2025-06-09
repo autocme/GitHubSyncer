@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  # Init container to set up host directory permissions
+  init-setup:
+    image: alpine:latest
+    container_name: github-sync-init
+    volumes:
+      - ./host-repos:/repos:rw
+    command: >
+      sh -c "
+        echo 'Setting up repository directory...';
+        mkdir -p /repos;
+        chmod 755 /repos;
+        chown 1000:1000 /repos;
+        echo 'Directory setup complete';
+      "
+    networks:
+      - github-sync-network
+
   github-sync:
     build: .
     container_name: github-sync-server
@@ -21,6 +38,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock  # For Docker container management
       - ssh_keys:/home/appuser/.ssh
     depends_on:
+      init-setup:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     restart: unless-stopped

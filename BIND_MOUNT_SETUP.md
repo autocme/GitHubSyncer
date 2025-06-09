@@ -11,22 +11,16 @@ The project includes an automated deployment script and properly configured Dock
 
 ### Quick Start
 
-1. **Run the deployment script:**
+**One-command deployment:**
 ```bash
-chmod +x deploy-docker.sh
-./deploy-docker.sh
-```
-
-2. **Or manual setup:**
-```bash
-# Create and set up host directory
-mkdir -p ./host-repos
-sudo chown -R 1000:1000 ./host-repos
-chmod 755 ./host-repos
-
-# Deploy with Docker Compose
 docker-compose up -d
 ```
+
+That's it! The Docker Compose configuration automatically:
+- Creates the host directory (`./host-repos`)
+- Sets proper permissions (1000:1000 ownership)
+- Configures the bind mount
+- Starts all services in the correct order
 
 ### Docker Compose Configuration (Current)
 
