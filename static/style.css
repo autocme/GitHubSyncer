@@ -220,6 +220,25 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focu
     color: #000000 !important;
 }
 
+/* Logs page form labels */
+.form-label {
+    color: #ffffff !important;
+}
+
+/* Card titles and headers */
+.card-header h5 {
+    color: #ffffff !important;
+}
+
+.card-header h6 {
+    color: #ffffff !important;
+}
+
+/* Page headings */
+h1, h2, h3 {
+    color: #ffffff !important;
+}
+
 /* Specific text elements that need color fixes */
 .modal-title {
     color: #212529 !important;
