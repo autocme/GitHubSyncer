@@ -24,7 +24,7 @@ services:
   web-frontend:
     image: my-frontend:latest
     labels:
-      restart_after_pull: "frontend-repo"
+      restart-after: "frontend-repo"
     ports:
       - "3000:3000"
     environment:
@@ -33,7 +33,7 @@ services:
   api-backend:
     image: my-api:latest
     labels:
-      restart_after_pull: "backend-repo"
+      restart-after: "backend-repo"
     ports:
       - "8080:8080"
     environment:
@@ -42,7 +42,7 @@ services:
   worker-service:
     image: my-worker:latest
     labels:
-      github-sync.restart-after: "worker-repo"
+      restart-after: "worker-repo"
     environment:
       - REDIS_URL=redis://redis:6379
 ```
@@ -53,7 +53,7 @@ services:
 ```bash
 docker run -d \
   --name my-app \
-  --label "restart_after_pull=my-repo" \
+  --label "restart-after=my-repo" \
   --port 3000:3000 \
   my-app:latest
 ```
@@ -62,7 +62,7 @@ docker run -d \
 ```bash
 docker run -d \
   --name production-api \
-  --label "restart_after_pull=api-repository" \
+  --label "restart-after=api-repository" \
   --label "environment=production" \
   --label "team=backend" \
   --port 8080:8080 \
@@ -73,8 +73,8 @@ docker run -d \
 #### Multiple Containers for Same Repository
 ```bash
 # Both containers will restart when "shared-repo" is updated
-docker run -d --name app-1 --label "restart_after_pull=shared-repo" app:latest
-docker run -d --name app-2 --label "restart_after_pull=shared-repo" app:latest
+docker run -d --name app-1 --label "restart-after=shared-repo" app:latest
+docker run -d --name app-2 --label "restart-after=shared-repo" app:latest
 ```
 
 ### Kubernetes Deployment (if using Docker-in-Docker)
