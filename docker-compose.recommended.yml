@@ -1,55 +1,185 @@
 version: '3.8'
 
-# Recommended Docker Compose configuration for GitHub Sync Server
-# This solves the changing volume path problem by using named volumes
+# Production-ready Docker Compose configuration using Docker volumes
+# Following Docker best practices from https://docs.docker.com/engine/storage/volumes/
 
 services:
-  github-sync:
+  github-sync-server:
     build: .
+    container_name: github-sync-server
     ports:
-      - "5000:5000"
-    volumes:
-      # Named volume - ensures consistent path across container restarts
-      - repos-data:/repos
-      # Database persistence
-      - db-data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "5000:5000"  # Web interface
+      - "8200:5000"  # Webhook endpoint
     environment:
-      - REPOS_PATH=/repos
-      - DATABASE_URL=postgresql://user:password@postgres:5432/github_sync
+      - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
+      - REPOS_PATH=/app/repos                      # Repository storage path
+      - AUTO_DETECT_VOLUMES=true                   # Enable volume auto-detection
+      - REPO_VOLUME_NAME=repo_storage              # Volume name for repositories
+      - LOG_LEVEL=INFO
+    volumes:
+      - repo_storage:/app/repos                    # Named volume for repositories
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
+      - ssh_keys:/home/appuser/.ssh                # SSH keys storage
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
-    
+    networks:
+      - github-sync-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - restart-after=github-sync                  # Self-restart label
+
   postgres:
-    image: postgres:15
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+    image: postgres:15-alpine
+    container_name: github-sync-postgres
     environment:
-      - POSTGRES_DB=github_sync
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=github_sync_db
+      - POSTGRES_USER=github_sync
+      - POSTGRES_PASSWORD=secure_password
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - github-sync-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U github_sync -d github_sync_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Example: Backend application container using shared repository volume
+  backend-app:
+    image: node:18-alpine
+    container_name: server-backend-app
+    working_dir: /app/code/server-backend
+    volumes:
+      - repo_storage:/app/code:ro                  # Read-only access to all repositories
+      - node_modules:/app/code/server-backend/node_modules  # Cache node_modules
+    command: ["sh", "-c", "npm install && npm start"]
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    labels:
+      - restart-after=server-backend               # Restart when server-backend repository updates
+    depends_on:
+      - github-sync-server
+    restart: unless-stopped
+    networks:
+      - github-sync-network
+
+  # Example: Odoo container using shared repository volume for custom addons
+  odoo:
+    image: odoo:17
+    container_name: odoo-odoo-1
+    volumes:
+      - repo_storage:/mnt/addons:ro                # Read-only access to custom addons
+      - odoo_data:/var/lib/odoo                    # Odoo data storage
+      - odoo_config:/etc/odoo                      # Odoo configuration
+    environment:
+      - HOST=postgres
+      - USER=github_sync
+      - PASSWORD=secure_password
+      - POSTGRES_DB=github_sync_db
+    ports:
+      - "8069:8069"
+    labels:
+      - restart-after=server-backend               # Restart when server-backend repository updates
+    depends_on:
+      postgres:
+        condition: service_healthy
+      github-sync-server:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - github-sync-network
+
+  # Example: Nginx reverse proxy with configuration from repository
+  nginx:
+    image: nginx:alpine
+    container_name: github-sync-nginx
+    volumes:
+      - repo_storage:/etc/nginx/conf.d:ro          # Read-only access to nginx configs
+      - nginx_logs:/var/log/nginx                  # Nginx logs storage
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - restart-after=frontend-config              # Restart when frontend-config repository updates
+    depends_on:
+      - github-sync-server
+      - backend-app
+      - odoo
+    restart: unless-stopped
+    networks:
+      - github-sync-network
 
 volumes:
-  repos-data:
+  # Repository storage volume - the heart of the system
+  repo_storage:
     driver: local
-  db-data:
-    driver: local
-  postgres-data:
+    # For production with specific host path:
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: /opt/github-sync/repos
+
+    # For NFS storage:
+    # driver_opts:
+    #   type: nfs
+    #   o: addr=nfs-server.example.com,rw
+    #   device: ":/path/to/repos"
+
+    # For AWS EFS:
+    # driver_opts:
+    #   type: nfs4
+    #   o: addr=fs-12345.efs.region.amazonaws.com,rw,accesspoint=fsap-12345
+    #   device: ":/"
+
+  # Database storage
+  postgres_data:
     driver: local
 
-# Alternative configuration using bind mounts (if you prefer host paths)
-# Uncomment and modify the paths below:
-#
-# services:
-#   github-sync:
-#     build: .
-#     ports:
-#       - "5000:5000"
-#     volumes:
-#       # Explicit host path binding
-#       - /opt/github-sync/repos:/repos
-#       - /opt/github-sync/data:/app/data
-#     environment:
-#       - REPOS_PATH=/repos
+  # SSH keys storage
+  ssh_keys:
+    driver: local
+
+  # Application-specific volumes
+  node_modules:
+    driver: local
+
+  odoo_data:
+    driver: local
+
+  odoo_config:
+    driver: local
+
+  nginx_logs:
+    driver: local
+
+networks:
+  github-sync-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Production deployment notes:
+# 1. Update environment variables with secure passwords
+# 2. Configure SSL/TLS certificates for HTTPS
+# 3. Set up proper backup strategy for volumes
+# 4. Use secrets management for sensitive data
+# 5. Configure monitoring and logging
+# 6. Set resource limits for containers
+# 7. Use health checks for all services

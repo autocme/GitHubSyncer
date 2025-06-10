@@ -1,19 +1,19 @@
     version: '3.8'
 
     services:
-      # Init container to set up host directory permissions
+      # Init container to set up volume permissions
       init-setup:
         image: alpine:latest
         container_name: github-sync-init
         volumes:
-          - ./host-repos:/repos:rw
+          - repo_storage:/repos:rw
         command: >
           sh -c "
-            echo 'Setting up repository directory...';
+            echo 'Setting up repository volume...';
             mkdir -p /repos;
             chmod 755 /repos;
             chown 1000:1000 /repos;
-            echo 'Directory setup complete';
+            echo 'Volume setup complete';
           "
         networks:
           - github-sync-network
@@ -26,7 +26,9 @@
           - "8200:5000"  # Webhook port (external 8200 -> internal 5000/webhook)
         environment:
           - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
-          - MAIN_PATH=/repos
+          - REPOS_PATH=/repos                      # Repository storage path
+          - AUTO_DETECT_VOLUMES=true               # Enable volume auto-detection
+          - REPO_VOLUME_NAME=repo_storage          # Volume name for repositories
           - LOG_LEVEL=INFO
           - POSTGRES_HOST=postgres
           - POSTGRES_PORT=5432
@@ -34,8 +36,8 @@
           - POSTGRES_USER=github_sync
           - POSTGRES_PASSWORD=secure_password
         volumes:
-          - ./host-repos:/repos:rw
-          - /var/run/docker.sock:/var/run/docker.sock
+          - repo_storage:/repos                    # Named volume for repositories
+          - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for container management
           - ssh_keys:/home/appuser/.ssh
         user: root  # ✅ This line fixes the Docker socket permission issue
         depends_on:
@@ -80,6 +82,13 @@
           start_period: 30s
 
     volumes:
+      repo_storage:                                    # Named volume for repository storage
+        driver: local
+        # For production, use a specific host path:
+        # driver_opts:
+        #   type: none
+        #   o: bind
+        #   device: /opt/github-sync/repos
       postgres_data:
         driver: local
       ssh_keys:
