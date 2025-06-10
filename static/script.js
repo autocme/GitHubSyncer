@@ -188,7 +188,7 @@ async function syncAllRepos() {
 async function discoverContainers() {
     try {
         showToast('Discovering containers...', 'info');
-        const response = await apiRequest('/api/v1/containers/discover', { method: 'POST' });
+        const response = await apiRequest('/api/containers/discover', { method: 'POST' });
         showToast(response.message, 'success');
         
         // Refresh page after a delay
@@ -272,7 +272,7 @@ async function addRepository() {
     }
     
     try {
-        const response = await apiRequest('/api/v1/repositories', {
+        const response = await apiRequest('/api/repositories', {
             method: 'POST',
             body: JSON.stringify({ name: finalName, url, branch })
         });
@@ -393,7 +393,7 @@ async function syncRepository(repoId) {
 async function restartContainer(containerId) {
     try {
         showToast('Restarting container...', 'info');
-        const response = await apiRequest(`/api/v1/containers/${containerId}/restart`, { method: 'POST' });
+        const response = await apiRequest(`/api/containers/${containerId}/restart`, { method: 'POST' });
         showToast('Container restarted successfully', 'success');
         
         setTimeout(() => location.reload(), 2000);
@@ -423,7 +423,7 @@ async function createApiKey() {
     }
     
     try {
-        const response = await apiRequest('/api/v1/api-keys', {
+        const response = await apiRequest('/api/api-keys', {
             method: 'POST',
             body: JSON.stringify({ name })
         });
@@ -454,7 +454,7 @@ async function revokeApiKey(keyId, keyName) {
     }
     
     try {
-        await apiRequest(`/api/v1/api-keys/${keyId}`, { method: 'DELETE' });
+        await apiRequest(`/api/api-keys/${keyId}`, { method: 'DELETE' });
         showToast('API key revoked successfully', 'success');
         
         setTimeout(() => location.reload(), 1000);
@@ -474,7 +474,7 @@ async function createGitKey() {
     
     try {
         showToast('Generating SSH key...', 'info');
-        const response = await apiRequest('/api/v1/git-keys', {
+        const response = await apiRequest('/api/git-keys', {
             method: 'POST',
             body: JSON.stringify({ name })
         });
@@ -501,7 +501,7 @@ async function deleteGitKey(keyId, keyName) {
     }
     
     try {
-        await apiRequest(`/api/v1/git-keys/${keyId}`, { method: 'DELETE' });
+        await apiRequest(`/api/git-keys/${keyId}`, { method: 'DELETE' });
         showToast('SSH key deleted successfully', 'success');
         
         setTimeout(() => location.reload(), 1000);
