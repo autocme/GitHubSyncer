@@ -1,0 +1,39 @@
+2025-06-10 04:08:46 - services.docker_service - INFO - Docker not accessible - using demonstration mode
+
+2025-06-10 04:08:46 - services.docker_service - INFO - Docker not accessible - using demonstration mode
+
+2025-06-10 04:08:46 - services.webhook_service - INFO - Pulling repository: server-backend
+
+2025-06-10 04:08:46 - services.webhook_service - INFO - Pulling repository: server-backend
+
+2025-06-10 04:08:46 - services.git_service - INFO - Repository not found locally, cloning instead: https://github.com/OCA/server-backend.git
+
+2025-06-10 04:08:46 - services.git_service - INFO - Repository not found locally, cloning instead: https://github.com/OCA/server-backend.git
+
+2025-06-10 04:08:46 - services.git_service - INFO - Using main path: /repos for repository: server-backend
+
+2025-06-10 04:08:46 - services.git_service - INFO - Using main path: /repos for repository: server-backend
+
+2025-06-10 04:08:46 - services.git_service - INFO - Cloning repository https://github.com/OCA/server-backend.git to /repos/server-backend
+
+2025-06-10 04:08:46 - services.git_service - INFO - Cloning repository https://github.com/OCA/server-backend.git to /repos/server-backend
+
+2025-06-10 04:08:46 - services.git_service - ERROR - Failed to clone repository server-backend from https://github.com/OCA/server-backend.git: Cmd('git') failed due to: exit code(128)
+
+  cmdline: git clone -v --branch=17.0 -- https://github.com/OCA/server-backend.git /repos/server-backend
+
+  stderr: 'fatal: could not create work tree dir '/repos/server-backend': No such file or directory
+
+'
+
+2025-06-10 04:08:46 - services.git_service - ERROR - Failed to clone repository server-backend from https://github.com/OCA/server-backend.git: Cmd('git') failed due to: exit code(128)
+
+  cmdline: git clone -v --branch=17.0 -- https://github.com/OCA/server-backend.git /repos/server-backend
+
+  stderr: 'fatal: could not create work tree dir '/repos/server-backend': No such file or directory
+
+'
+
+INFO:     46.153.117.17:59821 - "POST /api/v1/repositories/2/sync HTTP/1.1" 500 Internal Server Error
+
+INFO:     127.0.0.1:37386 - "GET /api/v1/health HTTP/1.1" 200 OK

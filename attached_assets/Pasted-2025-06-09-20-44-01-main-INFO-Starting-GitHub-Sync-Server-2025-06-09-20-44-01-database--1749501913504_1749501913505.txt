@@ -1,0 +1,100 @@
+2025-06-09 20:44:01 - main - INFO - Starting GitHub Sync Server...
+2025-06-09 20:44:01 - database - INFO - Database tables created successfully
+2025-06-09 20:44:01 - database - INFO - Database tables created successfully
+2025-06-09 20:44:01 - database - INFO - Default settings initialized
+2025-06-09 20:44:01 - database - INFO - Default settings initialized
+2025-06-09 20:44:01 - main - INFO - Database initialized
+INFO:     Application startup complete.
+2025-06-09 20:44:01 - main - INFO - Database initialized
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+2025-06-09 20:44:03 - routes.api - INFO - Session user_id: None
+2025-06-09 20:44:03 - routes.api - INFO - Session user_id: None
+2025-06-09 20:44:03 - routes.api - INFO - Session data: {}
+2025-06-09 20:44:03 - routes.api - INFO - Session data: {}
+2025-06-09 20:44:03 - routes.api - WARNING - All authentication methods failed
+2025-06-09 20:44:03 - routes.api - WARNING - All authentication methods failed
+INFO:     127.0.0.1:41128 - "GET /api/v1/status HTTP/1.1" 401 Unauthorized
+INFO:     46.153.117.17:50390 - "GET / HTTP/1.1" 307 Temporary Redirect
+INFO:     46.153.117.17:50390 - "GET /setup HTTP/1.1" 200 OK
+INFO:     46.153.117.17:50390 - "GET /static/style.css HTTP/1.1" 304 Not Modified
+2025-06-09 20:44:17 - services.auth_service - INFO - Created new user: admin
+2025-06-09 20:44:17 - services.auth_service - INFO - Created new user: admin
+2025-06-09 20:44:17 - services.auth_service - INFO - Setup marked as complete
+2025-06-09 20:44:17 - services.auth_service - INFO - Setup marked as complete
+2025-06-09 20:44:17 - routes.web - INFO - Initial setup completed successfully
+2025-06-09 20:44:17 - routes.web - INFO - Initial setup completed successfully
+INFO:     46.153.117.17:50391 - "POST /setup HTTP/1.1" 302 Found
+INFO:     46.153.117.17:50391 - "GET /login?setup=complete HTTP/1.1" 200 OK
+2025-06-09 20:44:18 - routes.api - INFO - Session user_id: None
+2025-06-09 20:44:18 - routes.api - INFO - Session data: {}
+2025-06-09 20:44:18 - routes.api - WARNING - All authentication methods failed
+2025-06-09 20:44:18 - routes.api - INFO - Session user_id: None
+2025-06-09 20:44:18 - routes.api - INFO - Session data: {}
+2025-06-09 20:44:18 - routes.api - WARNING - All authentication methods failed
+INFO:     127.0.0.1:50898 - "GET /api/v1/status HTTP/1.1" 401 Unauthorized
+2025-06-09 20:44:20 - services.auth_service - INFO - User authenticated: admin
+2025-06-09 20:44:20 - services.auth_service - INFO - User authenticated: admin
+INFO:     46.153.117.17:50391 - "POST /login HTTP/1.1" 302 Found
+INFO:     46.153.117.17:50391 - "GET /dashboard HTTP/1.1" 200 OK
+INFO:     46.153.117.17:50391 - "GET /static/script.js HTTP/1.1" 304 Not Modified
+INFO:     46.153.117.17:50391 - "GET /repositories HTTP/1.1" 200 OK
+2025-06-09 20:44:30 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:30 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:30 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:30 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:30 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:30 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:31 - routes.api - INFO - Created repository: server-backend
+2025-06-09 20:44:31 - routes.api - INFO - Created repository: server-backend
+INFO:     46.153.117.17:50392 - "POST /api/v1/repositories HTTP/1.1" 200 OK
+INFO:     46.153.117.17:50392 - "GET /repositories HTTP/1.1" 200 OK
+2025-06-09 20:44:33 - routes.api - INFO - Session user_id: None
+2025-06-09 20:44:33 - routes.api - INFO - Session data: {}
+2025-06-09 20:44:33 - routes.api - WARNING - All authentication methods failed
+2025-06-09 20:44:33 - routes.api - INFO - Session user_id: None
+2025-06-09 20:44:33 - routes.api - INFO - Session data: {}
+2025-06-09 20:44:33 - routes.api - WARNING - All authentication methods failed
+INFO:     127.0.0.1:56414 - "GET /api/v1/status HTTP/1.1" 401 Unauthorized
+2025-06-09 20:44:34 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:34 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:34 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:34 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:34 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:34 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:34 - services.webhook_service - INFO - Pulling repository: server-backend
+2025-06-09 20:44:34 - services.webhook_service - INFO - Pulling repository: server-backend
+2025-06-09 20:44:34 - services.git_service - INFO - Repository not found locally, cloning instead: https://github.com/OCA/server-backend.git
+2025-06-09 20:44:34 - services.git_service - INFO - Repository not found locally, cloning instead: https://github.com/OCA/server-backend.git
+2025-06-09 20:44:34 - services.git_service - INFO - Using main path: /repos for repository: server-backend
+2025-06-09 20:44:34 - services.git_service - INFO - Using main path: /repos for repository: server-backend
+2025-06-09 20:44:34 - services.git_service - ERROR - Failed to clone repository server-backend from https://github.com/OCA/server-backend.git: [Errno 13] Permission denied: '/repos'
+2025-06-09 20:44:34 - services.git_service - ERROR - Failed to clone repository server-backend from https://github.com/OCA/server-backend.git: [Errno 13] Permission denied: '/repos'
+INFO:     46.153.117.17:50392 - "POST /api/v1/repositories/1/sync HTTP/1.1" 500 Internal Server Error
+INFO:     46.153.117.17:50413 - "GET /repositories HTTP/1.1" 200 OK
+2025-06-09 20:44:46 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:46 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:46 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:46 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:46 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:46 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:46 - routes.api - INFO - Created repository: GitHub-Sync-Webhook-Service
+2025-06-09 20:44:46 - routes.api - INFO - Created repository: GitHub-Sync-Webhook-Service
+INFO:     46.153.117.17:50414 - "POST /api/v1/repositories HTTP/1.1" 200 OK
+INFO:     46.153.117.17:50414 - "GET /repositories HTTP/1.1" 200 OK
+INFO:     46.153.117.17:50422 - "GET /static/style.css HTTP/1.1" 304 Not Modified
+2025-06-09 20:44:49 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:49 - routes.api - INFO - Session user_id: 1
+2025-06-09 20:44:49 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:49 - routes.api - INFO - Session data: {'user_id': 1, 'username': 'admin'}
+2025-06-09 20:44:49 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:49 - routes.api - INFO - Found user: admin
+2025-06-09 20:44:49 - services.webhook_service - INFO - Pulling repository: GitHub-Sync-Webhook-Service
+2025-06-09 20:44:49 - services.webhook_service - INFO - Pulling repository: GitHub-Sync-Webhook-Service
+2025-06-09 20:44:49 - services.git_service - INFO - Repository not found locally, cloning instead: https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service.git
+2025-06-09 20:44:49 - services.git_service - INFO - Repository not found locally, cloning instead: https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service.git
+2025-06-09 20:44:49 - services.git_service - INFO - Using main path: /repos for repository: GitHub-Sync-Webhook-Service
+2025-06-09 20:44:49 - services.git_service - INFO - Using main path: /repos for repository: GitHub-Sync-Webhook-Service
+2025-06-09 20:44:49 - services.git_service - ERROR - Failed to clone repository GitHub-Sync-Webhook-Service from https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service.git: [Errno 13] Permission denied: '/repos'
+2025-06-09 20:44:49 - services.git_service - ERROR - Failed to clone repository GitHub-Sync-Webhook-Service from https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service.git: [Errno 13] Permission denied: '/repos'
+INFO:     46.153.117.17:50422 - "POST /api/v1/repositories/2/sync HTTP/1.1" 500 Internal Server Error
+INFO:     46.153.117.17:50422 - "GET /repositories HTTP/1.1" 200 OK
