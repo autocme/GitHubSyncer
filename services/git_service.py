@@ -62,6 +62,12 @@ Host github.com
         """Clone a repository to local path"""
         try:
             main_path = self._get_main_path()
+            
+            # Ensure main repository directory exists
+            main_path_obj = Path(main_path)
+            main_path_obj.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Ensured main repository directory exists: {main_path}")
+            
             repo_name = extract_repo_name_from_url(str(repo.url))
             repo_path = Path(main_path) / repo_name
             
