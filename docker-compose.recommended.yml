@@ -13,6 +13,7 @@ services:
       - repos-data:/repos
       # Database persistence
       - db-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - REPOS_PATH=/repos
       - DATABASE_URL=postgresql://user:password@postgres:5432/github_sync
