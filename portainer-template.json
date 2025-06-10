@@ -1,0 +1,72 @@
+{
+  "version": "2",
+  "templates": [
+    {
+      "type": 3,
+      "title": "GitHub Sync Webhook Service",
+      "description": "A FastAPI-based GitHub webhook server for automated repository management and Docker container deployment with enhanced security and user interface capabilities.",
+      "note": "This stack includes the GitHub Sync Server with PostgreSQL database. Default credentials: admin/admin (change after first login).",
+      "categories": ["Development", "CI/CD", "Git"],
+      "platform": "linux",
+      "logo": "https://raw.githubusercontent.com/docker/compose/master/logo.png",
+      "repository": {
+        "url": "https://github.com/ahmedkhamis12/GitHub-Sync-Webhook-Service",
+        "stackfile": "docker-compose.yml"
+      },
+      "env": [
+        {
+          "name": "POSTGRES_PASSWORD",
+          "label": "PostgreSQL Password",
+          "description": "Password for the PostgreSQL database",
+          "default": "secure_password_change_me"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "label": "PostgreSQL Username",
+          "description": "Username for the PostgreSQL database",
+          "default": "github_sync"
+        },
+        {
+          "name": "POSTGRES_DB",
+          "label": "PostgreSQL Database Name",
+          "description": "Name of the PostgreSQL database",
+          "default": "github_sync_db"
+        },
+        {
+          "name": "GITHUB_SYNC_PORT",
+          "label": "GitHub Sync Port",
+          "description": "Port for the GitHub Sync web interface",
+          "default": "5000"
+        },
+        {
+          "name": "WEBHOOK_PORT",
+          "label": "Webhook Port",
+          "description": "Port for GitHub webhook endpoint",
+          "default": "8200"
+        },
+        {
+          "name": "MAIN_PATH",
+          "label": "Repository Storage Path",
+          "description": "Path where repositories will be cloned",
+          "default": "/app/repos"
+        }
+      ],
+      "volumes": [
+        {
+          "container": "/app/repos",
+          "bind": "/opt/github-sync/repos",
+          "readonly": false
+        },
+        {
+          "container": "/var/run/docker.sock",
+          "bind": "/var/run/docker.sock",
+          "readonly": false
+        }
+      ],
+      "ports": [
+        "5000:5000/tcp",
+        "8200:8200/tcp"
+      ]
+    }
+  ]
+}
