@@ -331,9 +331,101 @@ class DockerService:
                     
                     return False, error_msg
             else:
-                # Simulate restart when Docker not available (for demonstration/testing)
-                logger.info(f"Simulating restart for container {container.name} (Docker not accessible)")
-                success_msg = f"Restart command sent for container {container.name} (demonstration mode)"
+                # Use command line docker restart when API not available
+                logger.info(f"Attempting command line restart for container {container.name}")
+                try:
+                    import subprocess
+                    result = subprocess.run(['docker', 'restart', container.container_id], 
+                                          capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0:
+                        success_msg = f"Successfully restarted container {container.name} via command line"
+                        logger.info(success_msg)
+                    else:
+                        error_msg = f"Command line restart failed for {container.name}: {result.stderr}"
+                        logger.error(error_msg)
+                        
+                        container.last_restart_success = False
+                        container.last_restart_time = datetime.utcnow()
+                        container.last_restart_error = error_msg
+                        
+                        # Log operation
+                        log_entry = OperationLog(
+                            operation_type="restart",
+                            container_id=container.container_id,
+                            status="error",
+                            message=f"Command line restart failed for container {container.name}",
+                            details=error_msg
+                        )
+                        self.db.add(log_entry)
+                        self.db.commit()
+                        
+                        return False, error_msg
+                        
+                except subprocess.TimeoutExpired:
+                    error_msg = f"Restart command timed out for container {container.name}"
+                    logger.error(error_msg)
+                    
+                    container.last_restart_success = False
+                    container.last_restart_time = datetime.utcnow()
+                    container.last_restart_error = error_msg
+                    
+                    # Log operation
+                    log_entry = OperationLog(
+                        operation_type="restart",
+                        container_id=container.container_id,
+                        status="error",
+                        message=f"Restart command timed out for container {container.name}",
+                        details=error_msg
+                    )
+                    self.db.add(log_entry)
+                    self.db.commit()
+                    
+                    return False, error_msg
+                    
+                except FileNotFoundError:
+                    error_msg = f"Docker command not found - cannot restart container {container.name}"
+                    logger.error(error_msg)
+                    
+                    container.last_restart_success = False
+                    container.last_restart_time = datetime.utcnow()
+                    container.last_restart_error = error_msg
+                    
+                    # Log operation
+                    log_entry = OperationLog(
+                        operation_type="restart",
+                        container_id=container.container_id,
+                        status="error",
+                        message=f"Docker command not found for container {container.name}",
+                        details=error_msg
+                    )
+                    self.db.add(log_entry)
+                    self.db.commit()
+                    
+                    return False, error_msg
+                    
+                except Exception as e:
+                    error_msg = f"Unexpected error during command line restart of {container.name}: {str(e)}"
+                    logger.error(error_msg)
+                    
+                    container.last_restart_success = False
+                    container.last_restart_time = datetime.utcnow()
+                    container.last_restart_error = error_msg
+                    
+                    # Log operation
+                    log_entry = OperationLog(
+                        operation_type="restart",
+                        container_id=container.container_id,
+                        status="error",
+                        message=f"Unexpected error restarting container {container.name}",
+                        details=error_msg
+                    )
+                    self.db.add(log_entry)
+                    self.db.commit()
+                    
+                    return False, error_msg
+                    
+                success_msg = f"Successfully restarted container {container.name} via command line"
             
             # Update container record
             container.last_restart_success = True

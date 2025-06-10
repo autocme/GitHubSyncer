@@ -218,6 +218,24 @@ def containers_page(request: Request, db: Session = Depends(get_db), current_use
         "containers": containers
     })
 
+@router.post("/containers/{container_id}/restart")
+def restart_container_web(request: Request, container_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
+    """Restart container via web interface"""
+    from fastapi.responses import RedirectResponse
+    
+    container = db.query(Container).filter(Container.container_id == container_id).first()
+    if not container:
+        # Redirect back with error
+        return RedirectResponse(url="/containers?error=Container not found", status_code=302)
+    
+    docker_service = DockerService(db)
+    success, message = docker_service.restart_container(container)
+    
+    if success:
+        return RedirectResponse(url="/containers?success=Container restarted successfully", status_code=302)
+    else:
+        return RedirectResponse(url=f"/containers?error={message}", status_code=302)
+
 @router.get("/logs", response_class=HTMLResponse)
 def logs_page(request: Request, page: int = 1, db: Session = Depends(get_db), current_user: User = Depends(require_auth)):
     """Logs page with pagination"""

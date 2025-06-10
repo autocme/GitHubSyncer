@@ -78,6 +78,24 @@
                         Discover Containers
                     </button>
                 </div>
+                
+                <!-- Success/Error Messages -->
+                {% set success = request.query_params.get('success') %}
+                {% set error = request.query_params.get('error') %}
+                
+                {% if success %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>{{ success }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+                
+                {% if error %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -146,9 +164,11 @@
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <button class="btn btn-outline-primary" onclick="restartContainer('{{ container.container_id }}')" title="Restart Container">
-                                                    <i class="fas fa-redo"></i>
-                                                </button>
+                                                <form style="display: inline;" method="post" action="/containers/{{ container.container_id }}/restart" onsubmit="return confirm('Are you sure you want to restart {{ container.name }}?')">
+                                                    <button type="submit" class="btn btn-outline-primary" title="Restart Container">
+                                                        <i class="fas fa-redo"></i>
+                                                    </button>
+                                                </form>
                                                 <button class="btn btn-outline-info" onclick="viewContainerDetails('{{ container.container_id }}')" title="View Details">
                                                     <i class="fas fa-info-circle"></i>
                                                 </button>
