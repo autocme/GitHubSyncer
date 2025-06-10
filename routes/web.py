@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, Cookie
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
 from database import get_db
@@ -44,6 +44,11 @@ def require_auth(request: Request, db: Session = Depends(get_db)):
         # This dependency will return None and the route will check for it
         return None
     return user
+
+@router.get("/favicon.ico")
+def favicon():
+    """Serve favicon from static directory"""
+    return FileResponse("static/favicon.ico")
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
