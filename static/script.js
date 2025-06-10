@@ -148,17 +148,23 @@ async function apiRequest(url, options = {}) {
 // Dashboard Functions
 async function syncAllRepos() {
     try {
-        showToast('Syncing all repositories...', 'info');
-        const response = await apiRequest('/api/v1/repositories');
+        showToast('Syncing all repositories and restarting containers...', 'info');
+        const response = await apiRequest('/api/repositories');
         const repositories = response;
         
         let successCount = 0;
         let errorCount = 0;
+        let totalContainersRestarted = 0;
         
         for (const repo of repositories) {
             try {
-                await apiRequest(`/api/v1/repositories/${repo.id}/sync`, { method: 'POST' });
+                const syncResponse = await apiRequest(`/api/repositories/${repo.id}/sync`, { method: 'POST' });
                 successCount++;
+                
+                if (syncResponse.containers_restarted) {
+                    const restarted = syncResponse.containers_restarted.filter(c => c.success).length;
+                    totalContainersRestarted += restarted;
+                }
             } catch (error) {
                 errorCount++;
                 console.error(`Failed to sync repository ${repo.name}:`, error);
@@ -166,9 +172,9 @@ async function syncAllRepos() {
         }
         
         if (errorCount === 0) {
-            showToast(`Successfully synced ${successCount} repositories`, 'success');
+            showToast(`Successfully synced ${successCount} repositories. ${totalContainersRestarted} containers restarted.`, 'success');
         } else {
-            showToast(`Synced ${successCount} repositories, ${errorCount} failed`, 'warning');
+            showToast(`Synced ${successCount} repositories, ${errorCount} failed. ${totalContainersRestarted} containers restarted.`, 'warning');
         }
         
         // Refresh page after a delay
@@ -286,7 +292,7 @@ async function addRepository() {
 
 async function editRepository(repoId) {
     try {
-        const response = await apiRequest(`/api/v1/repositories`);
+        const response = await apiRequest(`/api/repositories`);
         const repository = response.find(repo => repo.id === repoId);
         
         if (!repository) {
@@ -348,7 +354,7 @@ async function deleteRepository(repoId, repoName) {
     }
     
     try {
-        await apiRequest(`/api/v1/repositories/${repoId}`, { method: 'DELETE' });
+        await apiRequest(`/api/repositories/${repoId}`, { method: 'DELETE' });
         showToast('Repository deleted successfully', 'success');
         
         setTimeout(() => location.reload(), 1000);
