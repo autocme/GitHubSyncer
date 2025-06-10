@@ -331,13 +331,23 @@ class DockerService:
     def get_containers_for_repository(self, repository_name: str) -> List[Container]:
         """Get containers that should be restarted for a specific repository"""
         try:
-            containers = self.db.query(Container).filter(
-                Container.restart_after_pull == repository_name,
+            # Get all containers that might have comma-separated repository names
+            all_containers = self.db.query(Container).filter(
+                Container.restart_after_pull.isnot(None),
                 Container.status.in_(["running", "exited"])  # Only restart manageable containers
             ).all()
             
-            logger.info(f"Found {len(containers)} containers to restart for repository {repository_name}")
-            return containers
+            # Filter containers that include this repository name in their restart_after_pull
+            matching_containers = []
+            for container in all_containers:
+                if container.restart_after_pull:
+                    # Split comma-separated repository names and check if this repo is in the list
+                    repo_names = [name.strip() for name in container.restart_after_pull.split(",")]
+                    if repository_name in repo_names:
+                        matching_containers.append(container)
+            
+            logger.info(f"Found {len(matching_containers)} containers to restart for repository {repository_name}")
+            return matching_containers
             
         except Exception as e:
             logger.error(f"Failed to get containers for repository {repository_name}: {e}")
@@ -350,13 +360,24 @@ class DockerService:
         
         if self.docker_available:
             try:
-                # Use Docker API to find containers with the restart-after label
-                filters = {"label": f"restart-after={repository_name}"}
-                containers = self.client.containers.list(filters=filters)
+                # Get all containers with restart-after labels
+                filters = {"label": "restart-after"}
+                all_containers = self.client.containers.list(filters=filters)
                 
-                if not containers:
-                    logger.info(f"No containers found with label: restart-after={repository_name}")
-                    return 0, [f"No containers found with restart-after={repository_name} label"]
+                # Filter containers that include this repository name in their restart-after label
+                matching_containers = []
+                for container in all_containers:
+                    restart_after_label = container.labels.get("restart-after", "")
+                    # Split comma-separated repository names and check if this repo is in the list
+                    repo_names = [name.strip() for name in restart_after_label.split(",")]
+                    if repository_name in repo_names:
+                        matching_containers.append(container)
+                
+                if not matching_containers:
+                    logger.info(f"No containers found with restart-after label containing: {repository_name}")
+                    return 0, [f"No containers found with restart-after label containing {repository_name}"]
+                
+                containers = matching_containers
                 
                 for container in containers:
                     try:
