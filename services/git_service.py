@@ -20,7 +20,49 @@ class GitService:
     def _get_main_path(self) -> str:
         """Get the main path for repositories from settings"""
         setting = self.db.query(Setting).filter(Setting.key == "main_path").first()
-        return str(setting.value) if setting else "/repos"
+        configured_path = str(setting.value) if setting else "/repos"
+        
+        # Auto-detect Docker volume mount path
+        detected_path = self._detect_docker_volume_path(configured_path)
+        if detected_path != configured_path:
+            logger.info(f"Auto-detected Docker volume path: {detected_path} (configured: {configured_path})")
+            # Update setting with detected path
+            if setting:
+                setting.value = detected_path
+            else:
+                new_setting = Setting(key="main_path", value=detected_path, description="Repository storage path")
+                self.db.add(new_setting)
+            self.db.commit()
+            return detected_path
+        
+        return configured_path
+    
+    def _detect_docker_volume_path(self, configured_path: str) -> str:
+        """Detect actual Docker volume mount path"""
+        # Check if configured path exists and is writable
+        if os.path.exists(configured_path) and os.access(configured_path, os.W_OK):
+            return configured_path
+        
+        # Look for Docker Compose volume patterns
+        base_patterns = [
+            "/data/compose/*/host-repos",
+            "/data/compose/*/repos", 
+            "/opt/repos",
+            "/app/repos",
+            "/workspace/repos"
+        ]
+        
+        import glob
+        for pattern in base_patterns:
+            matches = glob.glob(pattern)
+            for match in matches:
+                if os.path.exists(match) and os.access(match, os.W_OK):
+                    logger.info(f"Found writable Docker volume path: {match}")
+                    return match
+        
+        # If no writable path found, return configured path
+        logger.warning(f"No writable path found, using configured: {configured_path}")
+        return configured_path
     
     def _setup_ssh_key(self, repo_url: str) -> Optional[str]:
         """Setup SSH key for private repository access"""
