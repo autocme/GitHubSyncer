@@ -100,36 +100,65 @@ class WebhookService:
                 results["errors"].append(f"Pull failed: {pull_message}")
                 return results
             
-            # Step 2: Use exact Flask Docker restart pattern from your working repository
+            # Step 2: Restart containers using your exact Docker pattern
             logger.info(f"Restarting containers for repository: {repository.name}")
             
-            # Create repository configuration matching your .env pattern
-            repo_config = {
-                "url": repository.url,
-                "dir": repository.local_path or f"/repos/{repository.name}",
-                "label": repository.name  # Use repository name as label like your Flask example
-            }
-            
-            # Use your exact Flask container restart pattern with repo label
-            success_count, restart_results = self.docker_service.restart_containers_by_repo_label(str(repository.name))
-            
-            for result_message in restart_results:
-                # Parse result to determine success/failure
-                if result_message.startswith("Successfully"):
-                    container_result = {
-                        "name": result_message.split()[-1] if len(result_message.split()) > 1 else "unknown",
-                        "success": True,
-                        "message": result_message
-                    }
-                else:
-                    container_result = {
-                        "name": "unknown",
-                        "success": False,
-                        "message": result_message
-                    }
-                    results["errors"].append(result_message)
+            # Use your exact Docker restart implementation
+            try:
+                import docker
+                client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+                containers = client.containers.list(all=True, filters={"label": f"repo={repository.name}"})
                 
-                results["containers_restarted"].append(container_result)
+                containers_restarted = 0
+                for container in containers:
+                    try:
+                        logger.info(f"Restarting container: {container.name}")
+                        container.restart()
+                        results["containers_restarted"].append({
+                            "name": container.name,
+                            "success": True,
+                            "message": f"Successfully restarted container: {container.name}"
+                        })
+                        containers_restarted += 1
+                    except Exception as restart_error:
+                        error_msg = f"Failed to restart {container.name}: {restart_error}"
+                        logger.error(error_msg)
+                        results["errors"].append(error_msg)
+                        results["containers_restarted"].append({
+                            "name": container.name,
+                            "success": False,
+                            "message": error_msg
+                        })
+                
+                if containers_restarted == 0 and len(containers) == 0:
+                    logger.info(f"No containers found with label: repo={repository.name}")
+                    results["containers_restarted"].append({
+                        "name": "none",
+                        "success": True,
+                        "message": f"No containers found with label: repo={repository.name}"
+                    })
+                
+            except Exception as docker_error:
+                # Fallback to Flask Docker service if direct Docker access fails
+                logger.warning(f"Direct Docker access failed: {docker_error}, using Flask service")
+                success_count, restart_results = self.docker_service.restart_containers_by_repo_label(str(repository.name))
+                
+                for result_message in restart_results:
+                    if result_message.startswith("Successfully"):
+                        container_result = {
+                            "name": result_message.split()[-1] if len(result_message.split()) > 1 else "unknown",
+                            "success": True,
+                            "message": result_message
+                        }
+                    else:
+                        container_result = {
+                            "name": "unknown",
+                            "success": False,
+                            "message": result_message
+                        }
+                        results["errors"].append(result_message)
+                    
+                    results["containers_restarted"].append(container_result)
             
             # Log successful operation
             log_entry = OperationLog(
