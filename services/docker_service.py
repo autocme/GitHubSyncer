@@ -152,7 +152,7 @@ class DockerService:
                 "name": "frontend-web-app", 
                 "image": "nginx:alpine",
                 "status": "running",
-                "labels": {"repo": "frontend-web", "app": "frontend"},
+                "labels": {"restart-after": "frontend-web", "app": "frontend"},
                 "restart_after": "frontend-web",
                 "message": "Frontend web application"
             },
@@ -161,7 +161,7 @@ class DockerService:
                 "name": "api-service-container",
                 "image": "python:3.11-slim",
                 "status": "running",
-                "labels": {"repo": "api-service", "app": "api"},
+                "labels": {"restart-after": "api-service", "app": "api"},
                 "restart_after": "api-service",
                 "message": "API service container"
             },
@@ -170,7 +170,7 @@ class DockerService:
                 "name": "worker-queue-service",
                 "image": "redis:alpine",
                 "status": "running",
-                "labels": {"repo": "worker-queue", "app": "queue"},
+                "labels": {"restart-after": "worker-queue", "app": "queue"},
                 "restart_after": "worker-queue",
                 "message": "Background worker queue"
             },
@@ -194,12 +194,24 @@ class DockerService:
             }
         ]
         
-        # Add containers to database
-        logger.info("Adding container configurations to database")
-        for container_data in real_containers:
+        # Combine demo and real containers
+        all_containers = demo_containers + real_containers
+        current_container_ids = {c["id"] for c in all_containers}
+        
+        # Add or update containers in database
+        logger.info("Updating container configurations in database")
+        for container_data in all_containers:
             try:
                 existing = self.db.query(Container).filter_by(container_id=container_data["id"]).first()
-                if not existing:
+                if existing:
+                    # Update existing container
+                    existing.name = container_data["name"]
+                    existing.image = container_data["image"]
+                    existing.status = container_data["status"]
+                    existing.labels = json.dumps(container_data["labels"])
+                    existing.restart_after_pull = container_data["restart_after"] if container_data["restart_after"] else None
+                else:
+                    # Create new container
                     container = Container(
                         container_id=container_data["id"],
                         name=container_data["name"],
@@ -213,6 +225,20 @@ class DockerService:
             except Exception as e:
                 logger.error(f"Error preparing container {container_data['name']}: {e}")
         
+        # Remove containers from database that no longer exist in demonstration data
+        db_containers = self.db.query(Container).all()
+        containers_to_remove = []
+        
+        for db_container in db_containers:
+            if db_container.container_id not in current_container_ids:
+                containers_to_remove.append(db_container)
+        
+        if containers_to_remove:
+            logger.info(f"Removing {len(containers_to_remove)} containers no longer in demonstration data:")
+            for container in containers_to_remove:
+                logger.info(f"  - Removing: {container.name} (ID: {container.container_id})")
+                self.db.delete(container)
+        
         try:
             self.db.commit()
             logger.info("Container configurations committed to database")
@@ -220,13 +246,14 @@ class DockerService:
             logger.error(f"Error saving containers: {e}")
             self.db.rollback()
         
-        return real_containers
+        return all_containers
     
     def _discover_real_containers(self) -> List[Dict]:
         """Discover real Docker containers when Docker is available"""
         try:
             containers = self.client.containers.list(all=True)
             container_list = []
+            current_container_ids = set()
             
             for container in containers:
                 # Support restart-after label format
@@ -243,6 +270,7 @@ class DockerService:
                 }
                 
                 container_list.append(container_data)
+                current_container_ids.add(container.id)
                 
                 # Update or create container record in database
                 db_container = self.db.query(Container).filter(
@@ -267,6 +295,20 @@ class DockerService:
                         restart_after_pull=container_data["restart_after"]
                     )
                     self.db.add(db_container)
+            
+            # Remove containers from database that no longer exist in Docker
+            db_containers = self.db.query(Container).all()
+            containers_to_remove = []
+            
+            for db_container in db_containers:
+                if db_container.container_id not in current_container_ids:
+                    containers_to_remove.append(db_container)
+            
+            if containers_to_remove:
+                logger.info(f"Removing {len(containers_to_remove)} containers that no longer exist in Docker:")
+                for container in containers_to_remove:
+                    logger.info(f"  - Removing: {container.name} (ID: {container.container_id})")
+                    self.db.delete(container)
             
             self.db.commit()
             logger.info(f"Discovered {len(container_list)} containers")
