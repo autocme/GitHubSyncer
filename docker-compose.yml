@@ -1,90 +1,90 @@
-version: '3.8'
+    version: '3.8'
 
-services:
-  # Init container to set up host directory permissions
-  init-setup:
-    image: alpine:latest
-    container_name: github-sync-init
-    volumes:
-      - ./host-repos:/repos:rw
-    command: >
-      sh -c "
-        echo 'Setting up repository directory...';
-        mkdir -p /repos;
-        chmod 755 /repos;
-        chown 1000:1000 /repos;
-        echo 'Directory setup complete';
-      "
-    networks:
-      - github-sync-network
-
-  github-sync:
-    build: .
-    container_name: github-sync-server
-    ports:
-      - "5000:5000"  # Web interface
-      - "8200:5000"  # Webhook port (external 8200 -> internal 5000/webhook)
-    environment:
-      - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
-      - MAIN_PATH=/repos
-      - LOG_LEVEL=INFO
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=github_sync_db
-      - POSTGRES_USER=github_sync
-      - POSTGRES_PASSWORD=secure_password
-    volumes:
-      - ./host-repos:/repos:rw  # Bind mount with read-write permissions
-      - /var/run/docker.sock:/var/run/docker.sock  # For Docker container management
-      - ssh_keys:/home/appuser/.ssh
-      
-    depends_on:
+    services:
+      # Init container to set up host directory permissions
       init-setup:
-        condition: service_completed_successfully
+        image: alpine:latest
+        container_name: github-sync-init
+        volumes:
+          - ./host-repos:/repos:rw
+        command: >
+          sh -c "
+            echo 'Setting up repository directory...';
+            mkdir -p /repos;
+            chmod 755 /repos;
+            chown 1000:1000 /repos;
+            echo 'Directory setup complete';
+          "
+        networks:
+          - github-sync-network
+
+      github-sync:
+        build: .
+        container_name: github-sync-server
+        ports:
+          - "5000:5000"  # Web interface
+          - "8200:5000"  # Webhook port (external 8200 -> internal 5000/webhook)
+        environment:
+          - DATABASE_URL=postgresql://github_sync:secure_password@postgres:5432/github_sync_db?sslmode=disable
+          - MAIN_PATH=/repos
+          - LOG_LEVEL=INFO
+          - POSTGRES_HOST=postgres
+          - POSTGRES_PORT=5432
+          - POSTGRES_DB=github_sync_db
+          - POSTGRES_USER=github_sync
+          - POSTGRES_PASSWORD=secure_password
+        volumes:
+          - ./host-repos:/repos:rw
+          - /var/run/docker.sock:/var/run/docker.sock
+          - ssh_keys:/home/appuser/.ssh
+        user: root  # ✅ This line fixes the Docker socket permission issue
+        depends_on:
+          init-setup:
+            condition: service_completed_successfully
+          postgres:
+            condition: service_healthy
+        restart: unless-stopped
+        networks:
+          - github-sync-network
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.github-sync.rule=Host(`github-sync.local`)"
+          - "traefik.http.services.github-sync.loadbalancer.server.port=5000"
+
       postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - github-sync-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.github-sync.rule=Host(`github-sync.local`)"
-      - "traefik.http.services.github-sync.loadbalancer.server.port=5000"
+        image: postgres:15-alpine
+        container_name: github-sync-postgres
+        environment:
+          - POSTGRES_DB=github_sync_db
+          - POSTGRES_USER=github_sync
+          - POSTGRES_PASSWORD=secure_password
+          - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+        restart: unless-stopped
+        networks:
+          - github-sync-network
+        ports:
+          - "5432:5432"
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U github_sync -d github_sync_db"]
+          interval: 10s
+          timeout: 5s
+          retries: 5
+          start_period: 30s
 
-  postgres:
-    image: postgres:15-alpine
-    container_name: github-sync-postgres
-    environment:
-      - POSTGRES_DB=github_sync_db
-      - POSTGRES_USER=github_sync
-      - POSTGRES_PASSWORD=secure_password
-      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      postgres_data:
+        driver: local
+      ssh_keys:
+        driver: local
+
     networks:
-      - github-sync-network
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U github_sync -d github_sync_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-
-volumes:
-  postgres_data:
-    driver: local
-  ssh_keys:
-    driver: local
-
-networks:
-  github-sync-network:
-    driver: bridge
+      github-sync-network:
+        driver: bridge
