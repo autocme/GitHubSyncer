@@ -173,7 +173,7 @@ async def sync_repository(repo_id: int, db: Session = Depends(get_db), current_u
 
 # Container endpoints
 @router.get("/containers")
-def get_containers(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def get_containers(db: Session = Depends(get_db)):
     """Get all containers"""
     docker_service = DockerService(db)
     # Refresh container list
