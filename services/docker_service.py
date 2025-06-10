@@ -1,5 +1,6 @@
 import json
 import docker
+import docker.errors
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 from sqlalchemy.orm import Session
@@ -283,21 +284,63 @@ class DockerService:
         """Restart a Docker container"""
         try:
             if self.docker_available:
-                # Try direct Docker restart
-                docker_container = self.client.containers.get(container.container_id)
-                logger.info(f"Restarting container {container.name} ({container.container_id})")
-                docker_container.restart()
-                success_msg = f"Successfully restarted container {container.name} via Docker API"
+                try:
+                    # Try direct Docker restart
+                    docker_container = self.client.containers.get(container.container_id)
+                    logger.info(f"Restarting container {container.name} ({container.container_id})")
+                    docker_container.restart()
+                    success_msg = f"Successfully restarted container {container.name} via Docker API"
+                except docker.errors.NotFound:
+                    error_msg = f"Container {container.name} ({container.container_id}) not found in Docker"
+                    logger.error(error_msg)
+                    
+                    container.last_restart_success = False
+                    container.last_restart_time = datetime.utcnow()
+                    container.last_restart_error = error_msg
+                    
+                    # Log operation
+                    log_entry = OperationLog(
+                        operation_type="restart",
+                        container_id=container.container_id,
+                        status="error",
+                        message=f"Container {container.name} not found",
+                        details=error_msg
+                    )
+                    self.db.add(log_entry)
+                    self.db.commit()
+                    
+                    return False, error_msg
+                except docker.errors.APIError as e:
+                    error_msg = f"Docker API error restarting {container.name}: {str(e)}"
+                    logger.error(error_msg)
+                    
+                    container.last_restart_success = False
+                    container.last_restart_time = datetime.utcnow()
+                    container.last_restart_error = error_msg
+                    
+                    # Log operation
+                    log_entry = OperationLog(
+                        operation_type="restart",
+                        container_id=container.container_id,
+                        status="error",
+                        message=f"Docker API error restarting container {container.name}",
+                        details=error_msg
+                    )
+                    self.db.add(log_entry)
+                    self.db.commit()
+                    
+                    return False, error_msg
             else:
                 # Simulate restart when Docker not available (for demonstration/testing)
                 logger.info(f"Simulating restart for container {container.name} (Docker not accessible)")
-                success_msg = f"Restart command sent for container {container.name}"
+                success_msg = f"Restart command sent for container {container.name} (demonstration mode)"
             
             # Update container record
             container.last_restart_success = True
             container.last_restart_time = datetime.utcnow()
             container.last_restart_error = None
-            container.status = "running"
+            if self.docker_available:
+                container.status = "running"
             
             # Log operation
             log_entry = OperationLog(
@@ -305,7 +348,7 @@ class DockerService:
                 container_id=container.container_id,
                 status="success",
                 message=f"Successfully restarted container {container.name}",
-                details=f"Container ID: {container.container_id}"
+                details=f"Container ID: {container.container_id}, Docker available: {self.docker_available}"
             )
             self.db.add(log_entry)
             self.db.commit()
@@ -314,49 +357,11 @@ class DockerService:
             return True, success_msg
             
         except Exception as e:
-            error_msg = f"Failed to restart container {container.name}: {str(e)}"
+            error_msg = f"Unexpected error restarting container {container.name}: {str(e)}"
             logger.error(error_msg)
             
             container.last_restart_success = False
             container.last_restart_time = datetime.utcnow()
-            container.last_restart_error = error_msg
-            
-            # Log operation
-            log_entry = OperationLog(
-                operation_type="restart",
-                container_id=container.container_id,
-                status="error",
-                message=f"Failed to restart container {container.name}",
-                details=error_msg
-            )
-            self.db.add(log_entry)
-            self.db.commit()
-            
-            return False, error_msg
-            error_msg = f"Container {container.name} not found"
-            logger.error(error_msg)
-            
-            container.last_restart_success = False
-            container.last_restart_error = error_msg
-            
-            # Log operation
-            log_entry = OperationLog(
-                operation_type="restart",
-                container_id=container.container_id,
-                status="error",
-                message=f"Container {container.name} not found",
-                details=error_msg
-            )
-            self.db.add(log_entry)
-            self.db.commit()
-            
-            return False, error_msg
-            
-        except Exception as e:
-            error_msg = f"Failed to restart container {container.name}: {str(e)}"
-            logger.error(error_msg)
-            
-            container.last_restart_success = False
             container.last_restart_error = error_msg
             
             # Log operation
