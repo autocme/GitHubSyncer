@@ -94,6 +94,7 @@
                                         <th>Name</th>
                                         <th>URL</th>
                                         <th>Branch</th>
+                                        <th>Local Path</th>
                                         <th>Status</th>
                                         <th>Last Pull</th>
                                         <th>Actions</th>
@@ -113,6 +114,11 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-info">{{ repo.branch }}</span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted font-monospace">
+                                                {{ repo.local_path or "Auto-detected" }}
+                                            </small>
                                         </td>
                                         <td>
                                             {% if repo.last_pull_success is none %}
@@ -245,6 +251,12 @@
                         <div class="mb-3">
                             <label for="editRepoBranch" class="form-label">Branch</label>
                             <input type="text" class="form-control" id="editRepoBranch">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="editRepoLocalPath" class="form-label">Local Path</label>
+                            <input type="text" class="form-control font-monospace" id="editRepoLocalPath" readonly>
+                            <div class="form-text">Repository storage path (automatically detected)</div>
                         </div>
 
                         <div class="mb-3">

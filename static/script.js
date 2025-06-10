@@ -299,6 +299,7 @@ async function editRepository(repoId) {
         document.getElementById('editRepoName').value = repository.name;
         document.getElementById('editRepoUrl').value = repository.url;
         document.getElementById('editRepoBranch').value = repository.branch;
+        document.getElementById('editRepoLocalPath').value = repository.local_path || 'Auto-detected';
         document.getElementById('editRepoActive').checked = repository.is_active;
         
         // Show modal
