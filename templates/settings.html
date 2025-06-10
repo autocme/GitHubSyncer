@@ -530,15 +530,17 @@
                                                 </td>
                                                 <td>
                                                     <div class="input-group">
-                                                        <input type="text" class="form-control" value="{{ key.public_key[:50] }}..." readonly>
-                                                        <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('{{ key.public_key }}')">
+                                                        <input type="text" class="form-control" id="ssh-key-{{ key.id }}" 
+                                                               value="{{ key.public_key[:50] }}..." readonly
+                                                               data-full-key="{{ key.public_key|e }}">
+                                                        <button class="btn btn-outline-secondary btn-sm" onclick="copySSHKey({{ key.id }})">
                                                             <i class="fas fa-copy"></i>
                                                         </button>
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="btn-group btn-group-sm">
-                                                        <button class="btn btn-outline-info" onclick="viewPublicKey({{ key.id }}, '{{ key.name }}', '{{ key.public_key }}')">
+                                                        <button class="btn btn-outline-info" onclick="viewPublicKey({{ key.id }}, {{ key.name|tojson }}, {{ key.public_key|tojson }})">
                                                             <i class="fas fa-eye"></i>
                                                         </button>
                                                         <button class="btn btn-outline-danger" onclick="deleteGitKey({{ key.id }}, '{{ key.name }}')">

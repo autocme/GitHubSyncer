@@ -106,6 +106,68 @@ function copyWebhookUrl() {
     copyToClipboard(webhookUrl);
 }
 
+function copySSHKey(keyId) {
+    // Find the input field for this SSH key
+    const keyInput = document.querySelector(`#ssh-key-${keyId}`);
+    if (keyInput) {
+        copyToClipboard(keyInput.dataset.fullKey);
+    } else {
+        showToast('Unable to copy SSH key', 'danger');
+    }
+}
+
+function viewPublicKey(keyId, keyName, publicKey) {
+    // Create modal to display full public key
+    const modalId = 'viewKeyModal';
+    let modal = document.getElementById(modalId);
+    
+    if (!modal) {
+        const modalHtml = `
+            <div class="modal fade" id="${modalId}" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-eye me-2"></i>
+                                SSH Public Key
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <h6 id="keyModalName"></h6>
+                            <div class="input-group mb-3">
+                                <textarea class="form-control" id="keyModalContent" rows="4" readonly></textarea>
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyFromModal()">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Usage:</strong> Copy this public key and add it to your GitHub account's SSH keys.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        modal = document.getElementById(modalId);
+    }
+    
+    // Update modal content
+    document.getElementById('keyModalName').textContent = keyName;
+    document.getElementById('keyModalContent').value = publicKey;
+    
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+function copyFromModal() {
+    const textarea = document.getElementById('keyModalContent');
+    copyToClipboard(textarea.value);
+}
+
 // API Functions
 async function apiRequest(url, options = {}) {
     const defaultOptions = {
