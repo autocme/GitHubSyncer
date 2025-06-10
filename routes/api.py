@@ -356,6 +356,7 @@ def delete_git_key(key_id: int, db: Session = Depends(get_db), current_user = De
 
 # Public health check endpoint (no authentication required)
 @router.get("/health")
+@router.get("/v1/health")
 def health_check():
     """Public health check endpoint for Docker health checks"""
     return {"status": "healthy", "message": "GitHub Sync Server is running"}

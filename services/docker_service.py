@@ -264,7 +264,7 @@ class DockerService:
                         image=container_data["image"],
                         status=container.status,
                         labels=json.dumps(container.labels),
-                        restart_after_pull=container_data["restart_after_pull"]
+                        restart_after_pull=container_data["restart_after"]
                     )
                     self.db.add(db_container)
             
