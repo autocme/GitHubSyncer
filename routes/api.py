@@ -114,7 +114,16 @@ def create_repository(repo_data: RepositoryCreate, db: Session = Depends(get_db)
         db.commit()
         db.refresh(repository)
         
+        # After successful creation, restart containers with matching repo label
+        from services.flask_docker_service import FlaskDockerService
+        docker_service = FlaskDockerService()
+        success_count, restart_results = docker_service.restart_containers_by_repo_label(repo_data.name)
+        
         logger.info(f"Created repository: {repo_data.name}")
+        logger.info(f"Container restart results: {success_count} containers restarted")
+        for result in restart_results:
+            logger.info(f"Restart result: {result}")
+        
         return repository
         
     except Exception as e:

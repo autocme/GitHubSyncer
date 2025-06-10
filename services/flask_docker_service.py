@@ -50,44 +50,51 @@ class FlaskDockerService:
             logger.error(error_msg)
             return False, error_msg
     
-    def restart_containers(self, label: str) -> Tuple[int, List[str]]:
+    def restart_containers_by_repo_label(self, repo_name: str) -> Tuple[int, List[str]]:
         """
-        Restart all Docker containers that have a specific label
-        Exact copy of your working Flask implementation
+        Restart all Docker containers that have repo label matching repo name
+        Uses your exact pattern: repo={repo_name}
         """
         if not self.docker_available:
-            return 0, [f"Docker not available - cannot restart containers with label: {label}"]
+            return 0, [f"Docker not available - cannot restart containers with repo label: repo={repo_name}"]
         
         results = []
         success_count = 0
         
         try:
-            # Use exact same pattern as your Flask example
-            containers = self.client.containers.list(filters={"label": label})
+            # Use your exact Docker label pattern
+            label_filter = f"repo={repo_name}"
+            containers = self.client.containers.list(all=True, filters={"label": label_filter})
             
             if not containers:
-                message = f"No containers found with label: {label}"
+                message = f"No containers found with label: {label_filter}"
                 logger.info(message)
                 return 0, [message]
             
-            # Restart each container - exact same pattern as your example
+            # Restart each container using your exact pattern
             for container in containers:
                 try:
-                    logger.info(f"Restarting container {container.name}")
-                    container.restart()  # Direct restart call like your example
+                    logger.info(f"Restarting container: {container.name}")
+                    container.restart()
                     success_count += 1
-                    results.append(f"Successfully restarted container {container.name}")
+                    results.append(f"Successfully restarted container: {container.name}")
                 except Exception as e:
-                    error_msg = f"Failed to restart {container.name}: {str(e)}"
+                    error_msg = f"Error restarting {container.name}: {e}"
                     logger.error(error_msg)
                     results.append(error_msg)
-            
-            return success_count, results
-            
+                    
         except Exception as e:
-            error_msg = f"Error accessing Docker: {str(e)}"
+            error_msg = f"Failed to restart containers with repo label {repo_name}: {e}"
             logger.error(error_msg)
-            return 0, [error_msg]
+            results.append(error_msg)
+            
+        return success_count, results
+
+    def restart_containers(self, label: str) -> Tuple[int, List[str]]:
+        """
+        Legacy method - now uses repo label pattern
+        """
+        return self.restart_containers_by_repo_label(label)
     
     def process_webhook_like_flask(self, repo_name: str, repo_config: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -39,16 +39,21 @@ services:
 ```
 
 #### 2. Container Labeling Strategy
-Add labels to containers you want to restart after repository updates:
+Add labels using your exact pattern: `repo={repository-name}`
 
 ```yaml
 # For containers that should restart when 'server-backend' repository updates
 labels:
-  - "server-backend"
+  - "repo=server-backend"
 
 # For containers that should restart when 'frontend' repository updates  
 labels:
-  - "frontend"
+  - "repo=frontend"
+
+# For containers that restart with multiple repositories
+labels:
+  - "repo=server-backend"
+  - "repo=api-service"
 ```
 
 #### 3. Repository Configuration
