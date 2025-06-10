@@ -110,8 +110,8 @@ class WebhookService:
                 "label": repository.name  # Use repository name as label like your Flask example
             }
             
-            # Use your exact Flask container restart pattern
-            success_count, restart_results = self.docker_service.restart_containers(repository.name)
+            # Use your exact Flask container restart pattern - pass label parameter
+            success_count, restart_results = self.docker_service.restart_containers(str(repository.name))
             
             for result_message in restart_results:
                 # Parse result to determine success/failure
