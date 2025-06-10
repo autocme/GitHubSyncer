@@ -360,11 +360,18 @@ async function deleteRepository(repoId, repoName) {
 
 async function syncRepository(repoId) {
     try {
-        showToast('Syncing repository...', 'info');
-        const response = await apiRequest(`/api/v1/repositories/${repoId}/sync`, { method: 'POST' });
+        showToast('Syncing repository and restarting containers...', 'info');
+        const response = await apiRequest(`/api/repositories/${repoId}/sync`, { method: 'POST' });
         
         if (response.success) {
-            showToast('Repository synced successfully', 'success');
+            const containersRestarted = response.containers_restarted || [];
+            const successCount = containersRestarted.filter(c => c.success).length;
+            
+            if (successCount > 0) {
+                showToast(`Repository synced successfully. ${successCount} containers restarted.`, 'success');
+            } else {
+                showToast('Repository synced successfully. No containers found to restart.', 'success');
+            }
         } else {
             showToast('Repository sync failed: ' + response.message, 'danger');
         }
