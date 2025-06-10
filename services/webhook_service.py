@@ -103,13 +103,16 @@ class WebhookService:
             # Step 2: Restart containers using your exact Docker pattern
             logger.info(f"Restarting containers for repository: {repository.name}")
             
+            # Initialize variables for both paths
+            containers_restarted = 0
+            success_count = 0
+            
             # Use your exact Docker restart implementation
             try:
                 import docker
                 client = docker.DockerClient(base_url='unix://var/run/docker.sock')
                 containers = client.containers.list(all=True, filters={"label": f"repo={repository.name}"})
                 
-                containers_restarted = 0
                 for container in containers:
                     try:
                         logger.info(f"Restarting container: {container.name}")
@@ -129,6 +132,8 @@ class WebhookService:
                             "success": False,
                             "message": error_msg
                         })
+                
+                success_count = containers_restarted
                 
                 if containers_restarted == 0 and len(containers) == 0:
                     logger.info(f"No containers found with label: repo={repository.name}")
