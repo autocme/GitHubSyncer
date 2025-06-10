@@ -1,4 +1,7 @@
 import json
+import os
+import subprocess
+import shutil
 import docker
 import docker.errors
 from datetime import datetime
@@ -427,9 +430,6 @@ class DockerService:
                 
                 for docker_cmd in docker_paths:
                     try:
-                        import subprocess
-                        import shutil
-                        
                         # Check if docker command exists
                         if docker_cmd == 'docker':
                             if not shutil.which('docker'):
@@ -438,7 +438,7 @@ class DockerService:
                             continue
                             
                         logger.info(f"Trying docker restart with command: {docker_cmd}")
-                        result = subprocess.run([docker_cmd, 'restart', container.container_id], 
+                        result = subprocess.run([docker_cmd, 'restart', str(container.container_id)], 
                                               capture_output=True, text=True, timeout=30)
                         
                         if result.returncode == 0:
@@ -468,7 +468,7 @@ class DockerService:
                     # Method 2: Try docker-compose restart if available
                     try:
                         logger.info(f"Trying docker-compose restart for {container.name}")
-                        result = subprocess.run(['docker-compose', 'restart', container.name], 
+                        result = subprocess.run(['docker-compose', 'restart', str(container.name)], 
                                               capture_output=True, text=True, timeout=30)
                         if result.returncode == 0:
                             success_msg = f"Successfully restarted container {container.name} via docker-compose"

@@ -128,7 +128,7 @@ class WebhookService:
                 repository_id=repository.id,
                 status="success",
                 message=f"Successfully processed webhook for {repository.name}",
-                details=f"Pulled code and restarted {len(container_results)} containers"
+                details=f"Pulled code and restarted {success_count} containers"
             )
             self.db.add(log_entry)
             self.db.commit()
