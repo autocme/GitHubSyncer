@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from models import Repository, OperationLog
 from services.git_service import GitService
-from services.docker_service import DockerService
+from services.simple_docker_service import SimpleDockerService
 from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
 
@@ -14,7 +14,7 @@ class WebhookService:
     def __init__(self, db: Session):
         self.db = db
         self.git_service = GitService(db)
-        self.docker_service = DockerService(db)
+        self.docker_service = SimpleDockerService()
     
     async def process_github_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Process GitHub webhook payload"""

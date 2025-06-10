@@ -48,7 +48,7 @@ class DockerService:
             # Method 2: Unix socket
             if not self.docker_available:
                 try:
-                    self.client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+                    self.client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
                     self.client.ping()
                     self.docker_available = True
                     logger.info("Docker client initialized via unix socket")
