@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from database import get_db
-from models import Repository, Container, OperationLog, ApiKey, GitKey
+from models import Repository, Container, OperationLog, ApiKey, GitKey, Setting
 from services.auth_service import AuthService
 from services.git_service import GitService
 from services.docker_service import DockerService
@@ -95,10 +95,18 @@ def create_repository(repo_data: RepositoryCreate, db: Session = Depends(get_db)
         if not git_service.validate_repository_url(repo_data.url):
             raise HTTPException(status_code=400, detail="Invalid or inaccessible repository URL")
         
+        # Get configured main path from settings
+        main_path_setting = db.query(Setting).filter(Setting.key == "main_path").first()
+        main_path = main_path_setting.value if main_path_setting else "/repos"
+        
+        # Set the local path based on configured main path
+        local_path = f"{main_path}/{repo_data.name}"
+        
         repository = Repository(
             name=repo_data.name,
             url=repo_data.url,
             branch=repo_data.branch,
+            local_path=local_path,
             is_active=True
         )
         
