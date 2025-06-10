@@ -100,70 +100,29 @@ class WebhookService:
                 results["errors"].append(f"Pull failed: {pull_message}")
                 return results
             
-            # Step 2: Restart containers using your exact Docker pattern
+            # Step 2: Restart containers using the same approach as manual restart
             logger.info(f"Restarting containers for repository: {repository.name}")
             
-            # Initialize variables for both paths
-            containers_restarted = 0
-            success_count = 0
+            # Use DockerService for consistent container restart functionality
+            success_count, restart_results = self.docker_service.restart_containers_by_label(str(repository.name))
             
-            # Use your exact Docker restart implementation
-            try:
-                import docker
-                client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-                containers = client.containers.list(all=True, filters={"label": f"repo={repository.name}"})
-                
-                for container in containers:
-                    try:
-                        logger.info(f"Restarting container: {container.name}")
-                        container.restart()
-                        results["containers_restarted"].append({
-                            "name": container.name,
-                            "success": True,
-                            "message": f"Successfully restarted container: {container.name}"
-                        })
-                        containers_restarted += 1
-                    except Exception as restart_error:
-                        error_msg = f"Failed to restart {container.name}: {restart_error}"
-                        logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        results["containers_restarted"].append({
-                            "name": container.name,
-                            "success": False,
-                            "message": error_msg
-                        })
-                
-                success_count = containers_restarted
-                
-                if containers_restarted == 0 and len(containers) == 0:
-                    logger.info(f"No containers found with label: repo={repository.name}")
+            # Process results
+            for result_message in restart_results:
+                if "Successfully restarted container" in result_message:
+                    container_name = result_message.split("container ")[-1] if "container " in result_message else "unknown"
                     results["containers_restarted"].append({
-                        "name": "none",
+                        "name": container_name,
                         "success": True,
-                        "message": f"No containers found with label: repo={repository.name}"
+                        "message": result_message
                     })
-                
-            except Exception as docker_error:
-                # Fallback to DockerService if direct Docker access fails
-                logger.warning(f"Direct Docker access failed: {docker_error}, using DockerService")
-                success_count, restart_results = self.docker_service.restart_containers_by_label(str(repository.name))
-                
-                for result_message in restart_results:
-                    if result_message.startswith("Successfully"):
-                        container_result = {
-                            "name": result_message.split()[-1] if len(result_message.split()) > 1 else "unknown",
-                            "success": True,
-                            "message": result_message
-                        }
-                    else:
-                        container_result = {
-                            "name": "unknown",
-                            "success": False,
-                            "message": result_message
-                        }
+                else:
+                    results["containers_restarted"].append({
+                        "name": "unknown",
+                        "success": False,
+                        "message": result_message
+                    })
+                    if "Failed" in result_message or "Error" in result_message:
                         results["errors"].append(result_message)
-                    
-                    results["containers_restarted"].append(container_result)
             
             # Log successful operation
             log_entry = OperationLog(
