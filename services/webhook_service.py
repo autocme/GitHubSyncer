@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from models import Repository, OperationLog
 from services.git_service import GitService
-from services.flask_docker_service import FlaskDockerService
+from services.docker_service import DockerService
 from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
 
@@ -14,7 +14,7 @@ class WebhookService:
     def __init__(self, db: Session):
         self.db = db
         self.git_service = GitService(db)
-        self.docker_service = FlaskDockerService()
+        self.docker_service = DockerService(db)
     
     async def process_github_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Process GitHub webhook payload"""
@@ -144,9 +144,9 @@ class WebhookService:
                     })
                 
             except Exception as docker_error:
-                # Fallback to Flask Docker service if direct Docker access fails
-                logger.warning(f"Direct Docker access failed: {docker_error}, using Flask service")
-                success_count, restart_results = self.docker_service.restart_containers_by_repo_label(str(repository.name))
+                # Fallback to DockerService if direct Docker access fails
+                logger.warning(f"Direct Docker access failed: {docker_error}, using DockerService")
+                success_count, restart_results = self.docker_service.restart_containers_by_label(str(repository.name))
                 
                 for result_message in restart_results:
                     if result_message.startswith("Successfully"):
