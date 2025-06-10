@@ -94,7 +94,7 @@ volumes:
 
 ## Complete Workflow
 
-### Development to Production
+### Development to Production (Webhook)
 1. **Developer pushes code** → GitHub repository
 2. **GitHub sends webhook** → Your server `/webhook/github`
 3. **Server processes webhook** → Extracts repository name
@@ -102,6 +102,14 @@ volumes:
 5. **Server finds containers** → `filters={"label": f"repo={repo_name}"}`
 6. **Server restarts containers** → `container.restart()` for each match
 7. **Applications reload** → Run with updated code
+
+### Manual Repository Sync
+1. **User clicks sync button** → In web interface
+2. **API calls manual sync** → `/api/repositories/{id}/sync`
+3. **Server pulls latest code** → Updates mounted volume
+4. **Server finds containers** → `filters={"label": f"repo={repo_name}"}`
+5. **Server restarts containers** → `container.restart()` for each match
+6. **Applications reload** → Run with updated code
 
 ### Manual Repository Creation
 1. **User creates repository** → Via web interface
