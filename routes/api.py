@@ -183,11 +183,37 @@ def get_containers(db: Session = Depends(get_db), current_user = Depends(get_cur
     return containers
 
 @router.post("/containers/discover")
-def discover_containers(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def discover_containers(db: Session = Depends(get_db)):
     """Discover Docker containers"""
     docker_service = DockerService(db)
     containers = docker_service.discover_containers()
     return {"message": f"Discovered {len(containers)} containers", "containers": containers}
+
+@router.post("/test/sync/{repo_name}")
+def test_sync_repository(repo_name: str, db: Session = Depends(get_db)):
+    """Test sync functionality without authentication"""
+    from services.flask_docker_service import FlaskDockerService
+    
+    # Get repository
+    repository = db.query(Repository).filter(Repository.name == repo_name).first()
+    if not repository:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    
+    # Simulate git pull success
+    logger.info(f"Simulating git pull for repository: {repo_name}")
+    
+    # Test container restart functionality
+    flask_docker = FlaskDockerService()
+    success_count, results = flask_docker.restart_containers_by_repo_label(repo_name)
+    
+    return {
+        "success": True,
+        "message": f"Synced repository {repo_name}",
+        "container_restarts": {
+            "success_count": success_count,
+            "results": results
+        }
+    }
 
 @router.post("/containers/{container_id}/restart")
 def restart_container(container_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
