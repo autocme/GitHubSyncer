@@ -38,7 +38,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include routers
 app.include_router(web.router, prefix="", tags=["web"])
-app.include_router(api.router, prefix="/api/v1", tags=["api"])
+app.include_router(api.router, prefix="/api", tags=["api"])
 app.include_router(webhook.router, prefix="/webhook", tags=["webhook"])
 
 # Templates with custom filters

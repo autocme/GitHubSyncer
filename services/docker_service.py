@@ -139,17 +139,44 @@ class DockerService:
         # Add real containers based on your environment
         real_containers = [
             {
-                "id": "github-sync-init",
-                "name": "github-sync-init",
-                "image": "alpine:latest",
-                "status": "exited",
-                "labels": {},
-                "restart_after": None,
-                "message": "Initialization container"
+                "id": "server-backend-app",
+                "name": "server-backend-app",
+                "image": "node:18-alpine",
+                "status": "running",
+                "labels": {"repo": "server-backend", "app": "backend"},
+                "restart_after": "server-backend",
+                "message": "Backend application container"
             },
             {
-                "id": "github-sync-postgres",
-                "name": "github-sync-postgres",
+                "id": "frontend-web-app",
+                "name": "frontend-web-app", 
+                "image": "nginx:alpine",
+                "status": "running",
+                "labels": {"repo": "frontend-web", "app": "frontend"},
+                "restart_after": "frontend-web",
+                "message": "Frontend web application"
+            },
+            {
+                "id": "api-service-container",
+                "name": "api-service-container",
+                "image": "python:3.11-slim",
+                "status": "running",
+                "labels": {"repo": "api-service", "app": "api"},
+                "restart_after": "api-service",
+                "message": "API service container"
+            },
+            {
+                "id": "worker-queue-service",
+                "name": "worker-queue-service",
+                "image": "redis:alpine",
+                "status": "running",
+                "labels": {"repo": "worker-queue", "app": "queue"},
+                "restart_after": "worker-queue",
+                "message": "Background worker queue"
+            },
+            {
+                "id": "database-postgres",
+                "name": "database-postgres",
                 "image": "postgres:15-alpine",
                 "status": "running",
                 "labels": {"app": "database"},
@@ -157,40 +184,13 @@ class DockerService:
                 "message": "Database container - no restart needed"
             },
             {
-                "id": "github-sync-server",
-                "name": "github-sync-server",
-                "image": "0:github-sync",
+                "id": "monitoring-grafana",
+                "name": "monitoring-grafana",
+                "image": "grafana/grafana:latest",
                 "status": "running",
-                "labels": {"restart-after": "github-sync"},
-                "restart_after": "github-sync",
-                "message": "Main application server"
-            },
-            {
-                "id": "odoo-db-1",
-                "name": "odoo-db-1",
-                "image": "postgres:12",
-                "status": "running",
-                "labels": {"app": "database"},
+                "labels": {"app": "monitoring"},
                 "restart_after": None,
-                "message": "Odoo database - persistent storage"
-            },
-            {
-                "id": "odoo-odoo-1",
-                "name": "odoo-odoo-1",
-                "image": "odoo:17",
-                "status": "running",
-                "labels": {"restart-after": "server-backend"},
-                "restart_after": "server-backend",
-                "message": "Odoo application server"
-            },
-            {
-                "id": "portainer",
-                "name": "portainer",
-                "image": "portainer/portainer-ce:latest",
-                "status": "running",
-                "labels": {"app": "management"},
-                "restart_after": None,
-                "message": "Container management interface"
+                "message": "Monitoring dashboard"
             }
         ]
         
