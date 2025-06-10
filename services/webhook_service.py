@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 from models import Repository, OperationLog
 from services.git_service import GitService
-from services.simple_docker_service import SimpleDockerService
+from services.flask_docker_service import FlaskDockerService
 from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
 
@@ -14,7 +14,7 @@ class WebhookService:
     def __init__(self, db: Session):
         self.db = db
         self.git_service = GitService(db)
-        self.docker_service = SimpleDockerService()
+        self.docker_service = FlaskDockerService()
     
     async def process_github_webhook(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Process GitHub webhook payload"""
@@ -100,15 +100,24 @@ class WebhookService:
                 results["errors"].append(f"Pull failed: {pull_message}")
                 return results
             
-            # Step 2: Restart associated containers
+            # Step 2: Use exact Flask Docker restart pattern from your working repository
             logger.info(f"Restarting containers for repository: {repository.name}")
-            success_count, restart_results = self.docker_service.restart_containers_by_label(repository.name)
+            
+            # Create repository configuration matching your .env pattern
+            repo_config = {
+                "url": repository.url,
+                "dir": repository.local_path or f"/repos/{repository.name}",
+                "label": repository.name  # Use repository name as label like your Flask example
+            }
+            
+            # Use your exact Flask container restart pattern
+            success_count, restart_results = self.docker_service.restart_containers(repository.name)
             
             for result_message in restart_results:
                 # Parse result to determine success/failure
                 if result_message.startswith("Successfully"):
                     container_result = {
-                        "name": result_message.split()[2],  # Extract container name
+                        "name": result_message.split()[-1] if len(result_message.split()) > 1 else "unknown",
                         "success": True,
                         "message": result_message
                     }
