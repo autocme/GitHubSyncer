@@ -13,7 +13,23 @@ class DockerService:
     def __init__(self, db: Session):
         self.db = db
         self.docker_available = False
+        self.docker_error = None
+        
         try:
+            # Check if Docker socket exists
+            import os
+            import subprocess
+            socket_path = '/var/run/docker.sock'
+            if os.path.exists(socket_path):
+                logger.info(f"Docker socket found at {socket_path}")
+                # Check socket permissions
+                import stat
+                socket_stat = os.stat(socket_path)
+                socket_perms = stat.filemode(socket_stat.st_mode)
+                logger.info(f"Socket permissions: {socket_perms}")
+            else:
+                logger.warning(f"Docker socket not found at {socket_path}")
+            
             # Try multiple Docker connection methods
             self.client = None
             
@@ -23,8 +39,8 @@ class DockerService:
                 self.client.ping()
                 self.docker_available = True
                 logger.info("Docker client initialized via docker.from_env()")
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"docker.from_env() failed: {e}")
             
             # Method 2: Unix socket
             if not self.docker_available:
@@ -33,8 +49,9 @@ class DockerService:
                     self.client.ping()
                     self.docker_available = True
                     logger.info("Docker client initialized via unix socket")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Unix socket connection failed: {e}")
+                    self.docker_error = str(e)
             
             # Method 3: TCP connection
             if not self.docker_available:
@@ -43,15 +60,16 @@ class DockerService:
                     self.client.ping()
                     self.docker_available = True
                     logger.info("Docker client initialized via TCP")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"TCP connection failed: {e}")
                     
             if not self.docker_available:
-                logger.info("Docker not accessible - using demonstration mode")
+                logger.warning(f"Docker not accessible - using demonstration mode. Last error: {self.docker_error}")
                 self.client = None
                 
         except Exception as e:
-            logger.info(f"Docker initialization failed: {e}")
+            logger.error(f"Docker initialization failed: {e}")
+            self.docker_error = str(e)
             self.client = None
     
     def discover_containers(self) -> List[Dict]:
@@ -280,6 +298,69 @@ class DockerService:
             logger.error(f"Failed to get containers for repository {repository_name}: {e}")
             return []
     
+    def restart_containers_by_label(self, repository_name: str) -> Tuple[int, List[str]]:
+        """Restart all Docker containers that have a specific restart-after label"""
+        results = []
+        success_count = 0
+        
+        if self.docker_available:
+            try:
+                # Use Docker API to find containers with the restart-after label
+                filters = {"label": f"restart-after={repository_name}"}
+                containers = self.client.containers.list(filters=filters)
+                
+                if not containers:
+                    logger.info(f"No containers found with label: restart-after={repository_name}")
+                    return 0, [f"No containers found with restart-after={repository_name} label"]
+                
+                for container in containers:
+                    try:
+                        logger.info(f"Restarting container {container.name}")
+                        container.restart()
+                        success_count += 1
+                        results.append(f"Successfully restarted container {container.name}")
+                        
+                        # Update database record if exists
+                        db_container = self.db.query(Container).filter_by(container_id=container.id).first()
+                        if db_container:
+                            db_container.last_restart_success = True
+                            db_container.last_restart_time = datetime.utcnow()
+                            db_container.last_restart_error = None
+                            
+                    except Exception as e:
+                        error_msg = f"Failed to restart {container.name}: {str(e)}"
+                        logger.error(error_msg)
+                        results.append(error_msg)
+                        
+                        # Update database record if exists
+                        db_container = self.db.query(Container).filter_by(container_id=container.id).first()
+                        if db_container:
+                            db_container.last_restart_success = False
+                            db_container.last_restart_time = datetime.utcnow()
+                            db_container.last_restart_error = error_msg
+                
+                self.db.commit()
+                
+            except Exception as e:
+                error_msg = f"Error accessing Docker API: {str(e)}"
+                logger.error(error_msg)
+                results.append(error_msg)
+        else:
+            # Fallback to database-tracked containers when Docker API unavailable
+            containers = self.get_containers_for_repository(repository_name)
+            if not containers:
+                return 0, [f"No containers configured for repository {repository_name}"]
+            
+            for container in containers:
+                success, message = self.restart_container(container)
+                if success:
+                    success_count += 1
+                    results.append(f"Restarted {container.name}: {message}")
+                else:
+                    results.append(f"Failed {container.name}: {message}")
+        
+        return success_count, results
+    
     def restart_container(self, container: Container) -> Tuple[bool, str]:
         """Restart a Docker container"""
         try:
@@ -331,99 +412,97 @@ class DockerService:
                     
                     return False, error_msg
             else:
-                # Use command line docker restart when API not available
-                logger.info(f"Attempting command line restart for container {container.name}")
-                try:
-                    import subprocess
-                    result = subprocess.run(['docker', 'restart', container.container_id], 
-                                          capture_output=True, text=True, timeout=30)
+                # Try different methods to restart container when API not available
+                logger.info(f"Attempting container restart for {container.name} using fallback methods")
+                
+                # Method 1: Try docker command with different paths
+                docker_paths = [
+                    '/usr/bin/docker',
+                    '/usr/local/bin/docker', 
+                    'docker'
+                ]
+                
+                success = False
+                error_msg = None
+                
+                for docker_cmd in docker_paths:
+                    try:
+                        import subprocess
+                        import shutil
+                        
+                        # Check if docker command exists
+                        if docker_cmd == 'docker':
+                            if not shutil.which('docker'):
+                                continue
+                        elif not os.path.exists(docker_cmd):
+                            continue
+                            
+                        logger.info(f"Trying docker restart with command: {docker_cmd}")
+                        result = subprocess.run([docker_cmd, 'restart', container.container_id], 
+                                              capture_output=True, text=True, timeout=30)
+                        
+                        if result.returncode == 0:
+                            success_msg = f"Successfully restarted container {container.name} via {docker_cmd}"
+                            logger.info(success_msg)
+                            success = True
+                            break
+                        else:
+                            error_msg = f"Docker restart failed: {result.stderr.strip()}"
+                            logger.warning(f"Docker command {docker_cmd} failed: {error_msg}")
+                            
+                    except subprocess.TimeoutExpired:
+                        error_msg = f"Docker restart command timed out for {container.name}"
+                        logger.warning(error_msg)
+                        continue
+                        
+                    except FileNotFoundError:
+                        logger.debug(f"Docker command not found at {docker_cmd}")
+                        continue
+                        
+                    except Exception as e:
+                        error_msg = f"Error with docker command {docker_cmd}: {str(e)}"
+                        logger.warning(error_msg)
+                        continue
+                
+                if not success:
+                    # Method 2: Try docker-compose restart if available
+                    try:
+                        logger.info(f"Trying docker-compose restart for {container.name}")
+                        result = subprocess.run(['docker-compose', 'restart', container.name], 
+                                              capture_output=True, text=True, timeout=30)
+                        if result.returncode == 0:
+                            success_msg = f"Successfully restarted container {container.name} via docker-compose"
+                            logger.info(success_msg)
+                            success = True
+                        else:
+                            logger.debug(f"docker-compose restart failed: {result.stderr}")
+                    except:
+                        logger.debug("docker-compose restart failed")
+                
+                if not success:
+                    # Final fallback - report the issue with diagnostic info
+                    diagnostic_info = f"Docker socket accessible: {os.path.exists('/var/run/docker.sock')}, "
+                    diagnostic_info += f"Last Docker error: {self.docker_error or 'Unknown'}"
                     
-                    if result.returncode == 0:
-                        success_msg = f"Successfully restarted container {container.name} via command line"
-                        logger.info(success_msg)
-                    else:
-                        error_msg = f"Command line restart failed for {container.name}: {result.stderr}"
-                        logger.error(error_msg)
-                        
-                        container.last_restart_success = False
-                        container.last_restart_time = datetime.utcnow()
-                        container.last_restart_error = error_msg
-                        
-                        # Log operation
-                        log_entry = OperationLog(
-                            operation_type="restart",
-                            container_id=container.container_id,
-                            status="error",
-                            message=f"Command line restart failed for container {container.name}",
-                            details=error_msg
-                        )
-                        self.db.add(log_entry)
-                        self.db.commit()
-                        
-                        return False, error_msg
-                        
-                except subprocess.TimeoutExpired:
-                    error_msg = f"Restart command timed out for container {container.name}"
-                    logger.error(error_msg)
+                    final_error = f"Cannot restart container {container.name} - no working Docker method found. {diagnostic_info}"
+                    logger.error(final_error)
                     
                     container.last_restart_success = False
                     container.last_restart_time = datetime.utcnow()
-                    container.last_restart_error = error_msg
+                    container.last_restart_error = final_error
                     
                     # Log operation
                     log_entry = OperationLog(
                         operation_type="restart",
                         container_id=container.container_id,
                         status="error",
-                        message=f"Restart command timed out for container {container.name}",
-                        details=error_msg
+                        message=f"Failed to restart container {container.name}",
+                        details=final_error
                     )
                     self.db.add(log_entry)
                     self.db.commit()
                     
-                    return False, error_msg
-                    
-                except FileNotFoundError:
-                    error_msg = f"Docker command not found - cannot restart container {container.name}"
-                    logger.error(error_msg)
-                    
-                    container.last_restart_success = False
-                    container.last_restart_time = datetime.utcnow()
-                    container.last_restart_error = error_msg
-                    
-                    # Log operation
-                    log_entry = OperationLog(
-                        operation_type="restart",
-                        container_id=container.container_id,
-                        status="error",
-                        message=f"Docker command not found for container {container.name}",
-                        details=error_msg
-                    )
-                    self.db.add(log_entry)
-                    self.db.commit()
-                    
-                    return False, error_msg
-                    
-                except Exception as e:
-                    error_msg = f"Unexpected error during command line restart of {container.name}: {str(e)}"
-                    logger.error(error_msg)
-                    
-                    container.last_restart_success = False
-                    container.last_restart_time = datetime.utcnow()
-                    container.last_restart_error = error_msg
-                    
-                    # Log operation
-                    log_entry = OperationLog(
-                        operation_type="restart",
-                        container_id=container.container_id,
-                        status="error",
-                        message=f"Unexpected error restarting container {container.name}",
-                        details=error_msg
-                    )
-                    self.db.add(log_entry)
-                    self.db.commit()
-                    
-                    return False, error_msg
+                    return False, final_error
                     
                 success_msg = f"Successfully restarted container {container.name} via command line"
             

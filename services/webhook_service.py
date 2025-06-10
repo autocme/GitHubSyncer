@@ -102,18 +102,25 @@ class WebhookService:
             
             # Step 2: Restart associated containers
             logger.info(f"Restarting containers for repository: {repository.name}")
-            container_results = self.docker_service.restart_containers_for_repository(repository.name)
+            success_count, restart_results = self.docker_service.restart_containers_by_label(repository.name)
             
-            for container_name, restart_success, restart_message in container_results:
-                container_result = {
-                    "name": container_name,
-                    "success": restart_success,
-                    "message": restart_message
-                }
-                results["containers_restarted"].append(container_result)
+            for result_message in restart_results:
+                # Parse result to determine success/failure
+                if result_message.startswith("Successfully"):
+                    container_result = {
+                        "name": result_message.split()[2],  # Extract container name
+                        "success": True,
+                        "message": result_message
+                    }
+                else:
+                    container_result = {
+                        "name": "unknown",
+                        "success": False,
+                        "message": result_message
+                    }
+                    results["errors"].append(result_message)
                 
-                if not restart_success:
-                    results["errors"].append(f"Container {container_name}: {restart_message}")
+                results["containers_restarted"].append(container_result)
             
             # Log successful operation
             log_entry = OperationLog(
