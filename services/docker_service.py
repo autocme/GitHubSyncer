@@ -143,7 +143,7 @@ class DockerService:
                 "name": "server-backend-app",
                 "image": "node:18-alpine",
                 "status": "running",
-                "labels": {"repo": "server-backend", "app": "backend"},
+                "labels": {"restart-after": "server-backend", "app": "backend"},
                 "restart_after": "server-backend",
                 "message": "Backend application container"
             },
@@ -302,19 +302,19 @@ class DockerService:
             return []
     
     def restart_containers_by_label(self, repository_name: str) -> Tuple[int, List[str]]:
-        """Restart all Docker containers that have a specific repo label"""
+        """Restart all Docker containers that have a specific restart-after label"""
         results = []
         success_count = 0
         
         if self.docker_available:
             try:
-                # Use Docker API to find containers with the repo label (same as manual restart)
-                filters = {"label": f"repo={repository_name}"}
+                # Use Docker API to find containers with the restart-after label
+                filters = {"label": f"restart-after={repository_name}"}
                 containers = self.client.containers.list(filters=filters)
                 
                 if not containers:
-                    logger.info(f"No containers found with label: repo={repository_name}")
-                    return 0, [f"No containers found with repo={repository_name} label"]
+                    logger.info(f"No containers found with label: restart-after={repository_name}")
+                    return 0, [f"No containers found with restart-after={repository_name} label"]
                 
                 for container in containers:
                     try:

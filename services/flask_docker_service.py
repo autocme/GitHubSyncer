@@ -97,8 +97,8 @@ class FlaskDockerService:
         success_count = 0
         
         try:
-            # Use your exact Docker label pattern
-            label_filter = f"repo={repo_name}"
+            # Use the correct restart-after label pattern
+            label_filter = f"restart-after={repo_name}"
             containers = self.client.containers.list(all=True, filters={"label": label_filter})
             
             if not containers:
