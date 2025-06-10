@@ -107,21 +107,34 @@ function copyWebhookUrl() {
 }
 
 function copySSHKey(keyId) {
+    console.log('copySSHKey called with keyId:', keyId);
     // Find the input field for this SSH key
     const keyInput = document.querySelector(`#ssh-key-${keyId}`);
+    console.log('Found input element:', keyInput);
+    
     if (keyInput) {
-        copyToClipboard(keyInput.dataset.fullKey);
+        const fullKey = keyInput.dataset.fullKey;
+        console.log('Full key length:', fullKey ? fullKey.length : 'undefined');
+        if (fullKey) {
+            copyToClipboard(fullKey);
+        } else {
+            showToast('SSH key data not found', 'danger');
+        }
     } else {
-        showToast('Unable to copy SSH key', 'danger');
+        console.error('SSH key input element not found for ID:', keyId);
+        showToast('Unable to find SSH key element', 'danger');
     }
 }
 
 function viewPublicKey(keyId, keyName, publicKey) {
+    console.log('viewPublicKey called:', { keyId, keyName, publicKeyLength: publicKey ? publicKey.length : 'undefined' });
+    
     // Create modal to display full public key
     const modalId = 'viewKeyModal';
     let modal = document.getElementById(modalId);
     
     if (!modal) {
+        console.log('Creating new modal');
         const modalHtml = `
             <div class="modal fade" id="${modalId}" tabindex="-1">
                 <div class="modal-dialog modal-lg">
@@ -155,12 +168,26 @@ function viewPublicKey(keyId, keyName, publicKey) {
     }
     
     // Update modal content
-    document.getElementById('keyModalName').textContent = keyName;
-    document.getElementById('keyModalContent').value = publicKey;
+    const nameElement = document.getElementById('keyModalName');
+    const contentElement = document.getElementById('keyModalContent');
     
-    // Show modal
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
+    if (nameElement && contentElement) {
+        nameElement.textContent = keyName;
+        contentElement.value = publicKey;
+        
+        // Show modal
+        try {
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            console.log('Modal shown successfully');
+        } catch (error) {
+            console.error('Error showing modal:', error);
+            showToast('Error displaying SSH key', 'danger');
+        }
+    } else {
+        console.error('Modal elements not found');
+        showToast('Error creating modal', 'danger');
+    }
 }
 
 function copyFromModal() {
