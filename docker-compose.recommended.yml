@@ -1,0 +1,54 @@
+version: '3.8'
+
+# Recommended Docker Compose configuration for GitHub Sync Server
+# This solves the changing volume path problem by using named volumes
+
+services:
+  github-sync:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Named volume - ensures consistent path across container restarts
+      - repos-data:/repos
+      # Database persistence
+      - db-data:/app/data
+    environment:
+      - REPOS_PATH=/repos
+      - DATABASE_URL=postgresql://user:password@postgres:5432/github_sync
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    
+  postgres:
+    image: postgres:15
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=github_sync
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    restart: unless-stopped
+
+volumes:
+  repos-data:
+    driver: local
+  db-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+# Alternative configuration using bind mounts (if you prefer host paths)
+# Uncomment and modify the paths below:
+#
+# services:
+#   github-sync:
+#     build: .
+#     ports:
+#       - "5000:5000"
+#     volumes:
+#       # Explicit host path binding
+#       - /opt/github-sync/repos:/repos
+#       - /opt/github-sync/data:/app/data
+#     environment:
+#       - REPOS_PATH=/repos

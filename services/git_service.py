@@ -38,30 +38,65 @@ class GitService:
         return configured_path
     
     def _detect_docker_volume_path(self, configured_path: str) -> str:
-        """Detect actual Docker volume mount path"""
+        """Detect actual Docker volume mount path with enhanced logic"""
         # Check if configured path exists and is writable
         if os.path.exists(configured_path) and os.access(configured_path, os.W_OK):
             return configured_path
         
-        # Look for Docker Compose volume patterns
+        # Enhanced Docker volume detection with multiple strategies
+        detected_paths = []
+        
+        # Strategy 1: Look for Docker Compose volume patterns
+        import glob
         base_patterns = [
             "/data/compose/*/host-repos",
-            "/data/compose/*/repos", 
-            "/opt/repos",
+            "/data/compose/*/repos",
+            "/opt/*/repos",
             "/app/repos",
-            "/workspace/repos"
+            "/workspace/repos",
+            "/mnt/repos"
         ]
         
-        import glob
         for pattern in base_patterns:
             matches = glob.glob(pattern)
             for match in matches:
                 if os.path.exists(match) and os.access(match, os.W_OK):
-                    logger.info(f"Found writable Docker volume path: {match}")
-                    return match
+                    detected_paths.append(match)
         
-        # If no writable path found, return configured path
-        logger.warning(f"No writable path found, using configured: {configured_path}")
+        # Strategy 2: Environment variable override
+        env_path = os.environ.get('REPOS_PATH')
+        if env_path and os.path.exists(env_path) and os.access(env_path, os.W_OK):
+            detected_paths.append(env_path)
+        
+        # Strategy 3: Search for existing repository directories
+        repo_dirs = []
+        for root, dirs, files in os.walk('/'):
+            if 'server-backend' in dirs:
+                potential_path = os.path.dirname(os.path.join(root, 'server-backend'))
+                if os.access(potential_path, os.W_OK):
+                    repo_dirs.append(potential_path)
+            # Limit search depth to avoid performance issues
+            if root.count(os.sep) >= 4:
+                dirs.clear()
+        
+        detected_paths.extend(repo_dirs)
+        
+        # Choose the most suitable path
+        if detected_paths:
+            # Prefer paths that contain existing repositories
+            for path in detected_paths:
+                if any(os.path.exists(os.path.join(path, repo)) for repo in ['server-backend', '.git']):
+                    logger.info(f"Found Docker volume path with existing repositories: {path}")
+                    return path
+            
+            # Otherwise, use the first writable path found
+            selected_path = detected_paths[0]
+            logger.info(f"Using first detected writable path: {selected_path}")
+            return selected_path
+        
+        # If no writable path found, return configured path and log warning
+        logger.warning(f"No writable Docker volume found. Using configured path: {configured_path}")
+        logger.info("Consider using named Docker volumes for consistent paths. See DOCKER_VOLUMES_GUIDE.md")
         return configured_path
     
     def _setup_ssh_key(self, repo_url: str) -> Optional[str]:
