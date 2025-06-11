@@ -5,9 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from models import User, ApiKey, Setting, LoginAttempt
-from utils.logger import setup_logger
-
-logger = setup_logger(__name__)
+from utils.logger import logger, log_security_event
 
 class AuthService:
     def __init__(self, db: Session):

@@ -8,9 +8,7 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Optional
 from sqlalchemy.orm import Session
 from models import Container, OperationLog, Repository
-from utils.logger import setup_logger
-
-logger = setup_logger(__name__)
+from utils.logger import logger, log_docker_operation, log_operation, log_performance_metric
 
 class DockerService:
     def __init__(self, db: Session):
