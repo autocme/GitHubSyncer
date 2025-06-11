@@ -3,10 +3,8 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 from database import get_db
 from services.webhook_service import WebhookService
-from utils.logger import setup_logger
+from utils.logger import logger, log_webhook_event, log_operation
 import json
-
-logger = setup_logger(__name__)
 router = APIRouter()
 
 @router.post("/github")
