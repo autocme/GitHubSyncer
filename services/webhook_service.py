@@ -5,10 +5,8 @@ from sqlalchemy.orm import Session
 from models import Repository, OperationLog
 from services.git_service import GitService
 from services.docker_service import DockerService
-from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
-
-logger = setup_logger(__name__)
+from utils.logger import logger, log_webhook_event, log_operation, log_performance_metric
 
 class WebhookService:
     def __init__(self, db: Session):

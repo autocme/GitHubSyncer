@@ -7,10 +7,8 @@ from datetime import datetime
 from git import Repo, GitCommandError
 from sqlalchemy.orm import Session
 from models import Repository, OperationLog, GitKey, Setting
-from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
-
-logger = setup_logger(__name__)
+from utils.logger import logger, log_git_operation, log_operation, log_performance_metric
 
 class GitService:
     def __init__(self, db: Session):

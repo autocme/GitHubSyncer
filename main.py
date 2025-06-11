@@ -71,8 +71,8 @@ async def log_requests(request: Request, call_next):
         method=request.method,
         path=str(request.url.path),
         status_code=response.status_code,
+        response_time=duration,
         user=user,
-        duration=duration,
         ip=client_ip
     )
     

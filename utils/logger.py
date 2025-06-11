@@ -1,398 +1,250 @@
+"""
+Enhanced logging utilities using loguru for structured logging
+"""
 import os
 import sys
-from pathlib import Path
-from loguru import logger
+from datetime import datetime
 from typing import Dict, Any, Optional
+from loguru import logger
 
-def setup_logger():
-    """Setup loguru logger with enhanced formatting and comprehensive logging"""
-    
-    # Remove default handler
-    logger.remove()
-    
-    # Create logs directory
-    logs_dir = Path("logs")
-    logs_dir.mkdir(exist_ok=True)
-    
-    # Enhanced format with detailed context and colors
-    detailed_format = (
-        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
-        "<level>{message}</level>"
-    )
-    
-    # Simple format for production
-    simple_format = (
-        "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function} | {message}"
-    )
-    
-    # Console handler with colors and backtrace
-    logger.add(
-        sys.stdout,
-        format=detailed_format,
-        level="INFO",
-        colorize=True,
-        backtrace=True,
-        diagnose=True,
-        filter=lambda record: record["level"].no < 40  # Below ERROR level
-    )
-    
-    # Console error handler for critical issues
-    logger.add(
-        sys.stderr,
-        format=detailed_format,
-        level="ERROR",
-        colorize=True,
-        backtrace=True,
-        diagnose=True
-    )
-    
-    # Main application log file with rotation
-    logger.add(
-        logs_dir / "github_sync_{time:YYYY-MM-DD}.log",
-        format=simple_format,
-        level="DEBUG",
-        rotation="100 MB",
-        retention="30 days",
-        compression="zip",
-        backtrace=True,
-        diagnose=True,
-        enqueue=True  # Thread-safe logging
-    )
-    
-    # Error-specific log file
-    logger.add(
-        logs_dir / "errors_{time:YYYY-MM-DD}.log",
-        format=detailed_format,
-        level="ERROR",
-        rotation="50 MB",
-        retention="90 days",
-        compression="zip",
-        backtrace=True,
-        diagnose=True,
-        enqueue=True
-    )
-    
-    # Operations log for tracking all system operations
-    logger.add(
-        logs_dir / "operations_{time:YYYY-MM-DD}.log",
-        format=simple_format,
-        level="INFO",
-        rotation="200 MB",
-        retention="60 days",
-        compression="zip",
-        filter=lambda record: any(tag in record["message"] for tag in ["[GIT]", "[DOCKER]", "[WEBHOOK]", "[API]"]),
-        enqueue=True
-    )
-    
-    return logger
+# Remove default logger
+logger.remove()
 
-def log_operation(operation: str, status: str, message: str, details: Optional[Dict[str, Any]] = None, repository: str = None, container: str = None):
-    """
-    Log an operation with structured context and detailed information
-    
-    Args:
-        operation: Operation type (pull, clone, restart, sync, etc.)
-        status: Operation status (success, error, warning, info)
-        message: Main descriptive message
-        details: Additional structured details
-        repository: Repository name if applicable
-        container: Container name if applicable
-    """
-    # Build structured log message
+# Configure enhanced structured logging with multiple outputs
+logger.add(
+    sys.stdout,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    level="INFO",
+    colorize=True,
+    backtrace=True,
+    diagnose=True,
+    enqueue=True
+)
+
+# File logging with rotation
+logger.add(
+    "logs/github_sync_{time}.log",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+    level="DEBUG",
+    rotation="10 MB",
+    retention="7 days",
+    compression="gz",
+    enqueue=True
+)
+
+# Error-only file logging
+logger.add(
+    "logs/errors_{time}.log",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message} | {extra}",
+    level="ERROR",
+    rotation="5 MB",
+    retention="30 days",
+    compression="gz",
+    backtrace=True,
+    diagnose=True,
+    enqueue=True
+)
+
+# Operation-specific file logging
+logger.add(
+    "logs/operations_{time}.log",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[operation_type] if extra.get('operation_type') else 'GENERAL'} | {message} | {extra}",
+    level="INFO",
+    filter=lambda record: any(tag in record["message"] for tag in ["[GIT]", "[DOCKER]", "[WEBHOOK]", "[API]"]),
+    enqueue=True
+)
+
+def log_operation(operation: str, status: str, message: str, details: Optional[Dict[str, Any]] = None, repository: Optional[str] = None, container: Optional[str] = None):
+    """Log an operation with structured context"""
     context = {
-        "operation": operation.upper(),
-        "status": status.upper(),
-        "message": message
+        "operation_type": operation,
+        "status": status,
+        "timestamp": datetime.utcnow().isoformat()
     }
     
+    if details:
+        context.update(details)
     if repository:
         context["repository"] = repository
     if container:
         context["container"] = container
-    if details:
-        context["details"] = details
     
-    # Format message with operation context
-    log_message = f"[{operation.upper()}] {message}"
-    if repository:
-        log_message += f" | Repository: {repository}"
-    if container:
-        log_message += f" | Container: {container}"
-    
-    # Add details if provided
-    if details:
-        details_str = " | ".join([f"{k}: {v}" for k, v in details.items()])
-        log_message += f" | {details_str}"
-    
-    # Log with appropriate level based on status
-    if status.lower() == 'success':
-        logger.info(log_message, **context)
-    elif status.lower() == 'error':
-        logger.error(log_message, **context)
-    elif status.lower() == 'warning':
-        logger.warning(log_message, **context)
-    else:
-        logger.info(log_message, **context)
+    with logger.contextualize(**context):
+        if status == "success":
+            logger.info(f"[{operation.upper()}] {message}")
+        elif status == "error":
+            logger.error(f"[{operation.upper()}] {message}")
+        else:
+            logger.warning(f"[{operation.upper()}] {message}")
 
-def log_api_request(method: str, path: str, status_code: int, user: str = None, duration: float = None, ip: str = None):
-    """
-    Log API request with comprehensive details
-    
-    Args:
-        method: HTTP method
-        path: Request path
-        status_code: HTTP status code
-        user: Username if authenticated
-        duration: Request duration in seconds
-        ip: Client IP address
-    """
+def log_git_operation(action: str, repository: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
+    """Log Git-specific operations"""
     context = {
-        "method": method,
-        "path": path,
-        "status_code": status_code,
-        "user": user or "anonymous",
-        "ip": ip or "unknown"
-    }
-    
-    if duration is not None:
-        context["duration_ms"] = round(duration * 1000, 2)
-    
-    message = f"[API] {method} {path} - {status_code}"
-    if user:
-        message += f" | User: {user}"
-    if duration is not None:
-        message += f" | Duration: {round(duration * 1000, 2)}ms"
-    if ip:
-        message += f" | IP: {ip}"
-    
-    # Log level based on status code
-    if status_code >= 500:
-        logger.error(message, **context)
-    elif status_code >= 400:
-        logger.warning(message, **context)
-    else:
-        logger.info(message, **context)
-
-def log_webhook_event(repository: str, event_type: str, status: str, message: str, payload_size: int = None, source_ip: str = None):
-    """
-    Log webhook event with detailed context
-    
-    Args:
-        repository: Repository name
-        event_type: Webhook event type (push, pull_request, etc.)
-        status: Processing status
-        message: Event description
-        payload_size: Webhook payload size in bytes
-        source_ip: Source IP address
-    """
-    context = {
-        "repository": repository,
-        "event_type": event_type,
-        "status": status.upper(),
-        "source_ip": source_ip or "unknown"
-    }
-    
-    if payload_size is not None:
-        context["payload_size_bytes"] = payload_size
-    
-    log_message = f"[WEBHOOK] {repository} - {event_type} | {status.upper()}: {message}"
-    if payload_size is not None:
-        log_message += f" | Payload: {payload_size} bytes"
-    if source_ip:
-        log_message += f" | Source: {source_ip}"
-    
-    if status.lower() == 'success':
-        logger.info(log_message, **context)
-    elif status.lower() == 'error':
-        logger.error(log_message, **context)
-    else:
-        logger.info(log_message, **context)
-
-def log_git_operation(operation: str, repository: str, success: bool, message: str, branch: str = None, commit_hash: str = None, duration: float = None):
-    """
-    Log Git operation with comprehensive details
-    
-    Args:
-        operation: Git operation (clone, pull, fetch, etc.)
-        repository: Repository name
-        success: Operation success status
-        message: Operation message
-        branch: Git branch name
-        commit_hash: Commit hash if applicable
-        duration: Operation duration in seconds
-    """
-    context = {
-        "operation": operation.upper(),
+        "operation_type": "git",
+        "action": action,
         "repository": repository,
         "success": success,
-        "branch": branch or "unknown"
-    }
-    
-    if commit_hash:
-        context["commit"] = commit_hash[:8]  # Short hash
-    if duration is not None:
-        context["duration_ms"] = round(duration * 1000, 2)
-    
-    status = "SUCCESS" if success else "FAILED"
-    log_message = f"[GIT] {operation.upper()} {repository} - {status}: {message}"
-    
-    if branch:
-        log_message += f" | Branch: {branch}"
-    if commit_hash:
-        log_message += f" | Commit: {commit_hash[:8]}"
-    if duration is not None:
-        log_message += f" | Duration: {round(duration * 1000, 2)}ms"
-    
-    if success:
-        logger.info(log_message, **context)
-    else:
-        logger.error(log_message, **context)
-
-def log_docker_operation(operation: str, container: str, success: bool, message: str, image: str = None, duration: float = None, restart_count: int = None):
-    """
-    Log Docker operation with detailed context
-    
-    Args:
-        operation: Docker operation (restart, start, stop, etc.)
-        container: Container name or ID
-        success: Operation success status
-        message: Operation message
-        image: Docker image name
-        duration: Operation duration in seconds
-        restart_count: Number of restart attempts
-    """
-    context = {
-        "operation": operation.upper(),
-        "container": container,
-        "success": success
-    }
-    
-    if image:
-        context["image"] = image
-    if duration is not None:
-        context["duration_ms"] = round(duration * 1000, 2)
-    if restart_count is not None:
-        context["restart_attempts"] = restart_count
-    
-    status = "SUCCESS" if success else "FAILED"
-    log_message = f"[DOCKER] {operation.upper()} {container} - {status}: {message}"
-    
-    if image:
-        log_message += f" | Image: {image}"
-    if duration is not None:
-        log_message += f" | Duration: {round(duration * 1000, 2)}ms"
-    if restart_count is not None:
-        log_message += f" | Attempts: {restart_count}"
-    
-    if success:
-        logger.info(log_message, **context)
-    else:
-        logger.error(log_message, **context)
-
-def log_security_event(event_type: str, message: str, user: str = None, ip: str = None, severity: str = "info"):
-    """
-    Log security-related events
-    
-    Args:
-        event_type: Type of security event (login_failure, api_key_created, etc.)
-        message: Event description
-        user: Username if applicable
-        ip: IP address
-        severity: Event severity (info, warning, critical)
-    """
-    context = {
-        "event_type": event_type,
-        "user": user or "unknown",
-        "ip": ip or "unknown",
-        "severity": severity.upper()
-    }
-    
-    log_message = f"[SECURITY] {event_type.upper()}: {message}"
-    if user:
-        log_message += f" | User: {user}"
-    if ip:
-        log_message += f" | IP: {ip}"
-    
-    if severity.lower() == 'critical':
-        logger.critical(log_message, **context)
-    elif severity.lower() == 'warning':
-        logger.warning(log_message, **context)
-    else:
-        logger.info(log_message, **context)
-
-def log_performance_metric(operation: str, duration: float, details: Optional[Dict[str, Any]] = None):
-    """
-    Log performance metrics for monitoring
-    
-    Args:
-        operation: Operation name
-        duration: Duration in seconds
-        details: Additional performance details
-    """
-    context = {
-        "operation": operation,
-        "duration_ms": round(duration * 1000, 2),
-        "duration_s": round(duration, 3)
+        "timestamp": datetime.utcnow().isoformat()
     }
     
     if details:
         context.update(details)
     
-    log_message = f"[PERFORMANCE] {operation} completed in {round(duration * 1000, 2)}ms"
+    with logger.contextualize(**context):
+        if success:
+            logger.info(f"[GIT] {action} on {repository}: {message}")
+        else:
+            logger.error(f"[GIT] {action} on {repository} failed: {message}")
+
+def log_docker_operation(action: str, container_name: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
+    """Log Docker-specific operations"""
+    context = {
+        "operation_type": "docker",
+        "action": action,
+        "container": container_name,
+        "success": success,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
     if details:
-        details_str = " | ".join([f"{k}: {v}" for k, v in details.items()])
-        log_message += f" | {details_str}"
+        context.update(details)
     
-    logger.info(log_message, **context)
+    with logger.contextualize(**context):
+        if success:
+            logger.info(f"[DOCKER] {action} on {container_name}: {message}")
+        else:
+            logger.error(f"[DOCKER] {action} on {container_name} failed: {message}")
 
-def get_log_files():
-    """
-    Get list of available log files with metadata
+def log_webhook_event(event_type: str, repository: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
+    """Log webhook-specific events"""
+    context = {
+        "operation_type": "webhook",
+        "event_type": event_type,
+        "repository": repository,
+        "success": success,
+        "timestamp": datetime.utcnow().isoformat()
+    }
     
-    Returns:
-        List of log file information dictionaries
-    """
-    logs_dir = Path("logs")
-    if not logs_dir.exists():
-        return []
+    if details:
+        context.update(details)
     
-    log_files = []
-    for log_file in logs_dir.glob("*.log*"):
-        try:
-            stat = log_file.stat()
-            log_files.append({
-                "name": log_file.name,
-                "path": str(log_file),
-                "size": stat.st_size,
-                "size_mb": round(stat.st_size / (1024 * 1024), 2),
-                "modified": stat.st_mtime,
-                "type": "compressed" if log_file.suffix == ".zip" else "active"
-            })
-        except Exception as e:
-            logger.warning(f"Failed to get stats for log file {log_file.name}: {e}")
-    
-    return sorted(log_files, key=lambda x: x["modified"], reverse=True)
+    with logger.contextualize(**context):
+        if success:
+            logger.info(f"[WEBHOOK] {event_type} for {repository}: {message}")
+        else:
+            logger.error(f"[WEBHOOK] {event_type} for {repository} failed: {message}")
 
-def setup_external_loggers():
-    """Configure external library loggers to reduce noise"""
-    import logging
+def log_api_request(method: str, path: str, status_code: int, response_time: float, user: Optional[str] = None, ip: Optional[str] = None):
+    """Log API request details"""
+    context = {
+        "operation_type": "api_request",
+        "method": method,
+        "path": path,
+        "status_code": status_code,
+        "response_time": response_time,
+        "timestamp": datetime.utcnow().isoformat()
+    }
     
-    # Reduce noise from external libraries
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("requests").setLevel(logging.WARNING)
-    logging.getLogger("docker").setLevel(logging.WARNING)
-    logging.getLogger("git").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    if user:
+        context["user"] = user
+    if ip:
+        context["ip"] = ip
+    
+    with logger.contextualize(**context):
+        logger.info(f"[API] {method} {path} - {status_code} ({response_time:.3f}s)")
 
-# Setup logger on import
-setup_logger()
-setup_external_loggers()
+def log_security_event(event_type: str, user: Optional[str], ip: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
+    """Log security-related events"""
+    context = {
+        "operation_type": "security",
+        "event_type": event_type,
+        "ip": ip,
+        "success": success,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    if user:
+        context["user"] = user
+    if details:
+        context.update(details)
+    
+    with logger.contextualize(**context):
+        if success:
+            logger.info(f"[SECURITY] {event_type}: {message}")
+        else:
+            logger.warning(f"[SECURITY] {event_type} failed: {message}")
 
-# Export the main logger instance
+def log_database_operation(operation: str, table: str, count: int, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
+    """Log database operations"""
+    context = {
+        "operation_type": "database",
+        "operation": operation,
+        "table": table,
+        "count": count,
+        "success": success,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    if details:
+        context.update(details)
+    
+    with logger.contextualize(**context):
+        if success:
+            logger.info(f"[DATABASE] {operation} on {table}: {message} (count: {count})")
+        else:
+            logger.error(f"[DATABASE] {operation} on {table} failed: {message}")
+
+def log_performance_metric(operation: str, duration: float, details: Optional[Dict[str, Any]] = None):
+    """Log performance metrics"""
+    context = {
+        "operation_type": "performance",
+        "operation": operation,
+        "duration": duration,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    if details:
+        context.update(details)
+    
+    with logger.contextualize(**context):
+        if duration > 5.0:
+            logger.warning(f"[PERFORMANCE] {operation} took {duration:.3f}s (slow)")
+        else:
+            logger.info(f"[PERFORMANCE] {operation} completed in {duration:.3f}s")
+
+def log_system_status(component: str, status: str, message: str, details: Optional[Dict[str, Any]] = None):
+    """Log system status updates"""
+    context = {
+        "operation_type": "system",
+        "component": component,
+        "status": status,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    if details:
+        context.update(details)
+    
+    with logger.contextualize(**context):
+        if status == "healthy":
+            logger.info(f"[SYSTEM] {component}: {message}")
+        elif status == "warning":
+            logger.warning(f"[SYSTEM] {component}: {message}")
+        else:
+            logger.error(f"[SYSTEM] {component}: {message}")
+
+# Ensure logs directory exists
+os.makedirs("logs", exist_ok=True)
+
+# Export the configured logger
 __all__ = [
-    'logger', 'log_operation', 'log_api_request', 'log_webhook_event',
-    'log_git_operation', 'log_docker_operation', 'log_security_event',
-    'log_performance_metric', 'get_log_files'
+    "logger",
+    "log_operation",
+    "log_git_operation", 
+    "log_docker_operation",
+    "log_webhook_event",
+    "log_api_request",
+    "log_security_event",
+    "log_database_operation",
+    "log_performance_metric",
+    "log_system_status"
 ]

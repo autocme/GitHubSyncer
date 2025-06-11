@@ -8,9 +8,7 @@ from services.auth_service import AuthService
 from services.git_service import GitService
 from services.docker_service import DockerService
 from services.webhook_service import WebhookService
-from utils.logger import setup_logger
-
-logger = setup_logger(__name__)
+from utils.logger import logger, log_api_request, log_operation
 router = APIRouter()
 
 # Pydantic models for API
