@@ -7,6 +7,13 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from loguru import logger
 
+def setup_logger():
+    """
+    Setup logger configuration - kept for backward compatibility
+    The logger is already configured on module import
+    """
+    pass
+
 # Remove default logger
 logger.remove()
 
@@ -242,6 +249,7 @@ os.makedirs("logs", exist_ok=True)
 # Export the configured logger
 __all__ = [
     "logger",
+    "setup_logger",
     "log_operation",
     "log_git_operation", 
     "log_docker_operation",
