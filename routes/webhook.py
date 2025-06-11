@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import Dict, Any
+from datetime import datetime
 from database import get_db
 from services.webhook_service import WebhookService
 from utils.logger import logger, log_webhook_event, log_operation
@@ -47,20 +48,49 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
                 "details": result
             }
     
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        error_details = {
+            "error_type": "json_decode_error",
+            "error_message": str(e),
+            "payload_preview": body[:200] if body else "No body",
+            "timestamp": datetime.utcnow().isoformat(),
+            "suggested_action": "Verify webhook payload format and JSON syntax"
+        }
         error_msg = "Invalid JSON payload"
-        logger.error(error_msg)
+        
+        log_webhook_event(
+            event_type="webhook_json_error",
+            repository="unknown",
+            success=False,
+            message=error_msg,
+            details=error_details
+        )
+        
         raise HTTPException(status_code=400, detail=error_msg)
     
     except Exception as e:
+        error_details = {
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "payload_preview": body[:200] if body else "No body",
+            "timestamp": datetime.utcnow().isoformat(),
+            "suggested_action": "Check webhook service logs and repository configuration"
+        }
         error_msg = f"Error processing webhook: {str(e)}"
-        logger.error(error_msg)
+        
+        log_webhook_event(
+            event_type="webhook_processing_error",
+            repository="unknown",
+            success=False,
+            message=error_msg,
+            details=error_details
+        )
         
         # Return error response instead of raising exception
         return {
             "status": "error",
             "message": error_msg,
-            "details": {"error": str(e)}
+            "details": error_details
         }
 
 @router.get("/test")

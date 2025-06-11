@@ -500,8 +500,8 @@ class DockerService:
                         operation_type="restart",
                         container_id=container.container_id,
                         status="error",
-                        message=f"Docker API error restarting container {container.name}",
-                        details=error_msg
+                        message=error_msg,
+                        details=str(error_details)
                     )
                     self.db.add(log_entry)
                     self.db.commit()
