@@ -11,8 +11,10 @@ router = APIRouter()
 @router.post("/github")
 async def github_webhook(request: Request, db: Session = Depends(get_db)):
     """Handle GitHub webhook"""
+    body = None
     try:
         # Get webhook payload
+        body = await request.body()
         payload = await request.json()
         
         logger.info(f"Received GitHub webhook: {json.dumps(payload, indent=2)}")
@@ -49,10 +51,11 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
             }
     
     except json.JSONDecodeError as e:
+        body_preview = body.decode('utf-8')[:200] if body else "No body"
         error_details = {
             "error_type": "json_decode_error",
             "error_message": str(e),
-            "payload_preview": body[:200] if body else "No body",
+            "payload_preview": body_preview,
             "timestamp": datetime.utcnow().isoformat(),
             "suggested_action": "Verify webhook payload format and JSON syntax"
         }
@@ -69,10 +72,11 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=error_msg)
     
     except Exception as e:
+        body_preview = body.decode('utf-8')[:200] if body else "No body"
         error_details = {
             "error_type": type(e).__name__,
             "error_message": str(e),
-            "payload_preview": body[:200] if body else "No body",
+            "payload_preview": body_preview,
             "timestamp": datetime.utcnow().isoformat(),
             "suggested_action": "Check webhook service logs and repository configuration"
         }
