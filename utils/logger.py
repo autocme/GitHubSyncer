@@ -45,10 +45,14 @@ logger.add(
     enqueue=True
 )
 
-# Operation-specific file logging
+# Operation-specific file logging with custom formatter
+def operations_formatter(record):
+    operation_type = record["extra"].get("operation_type", "GENERAL").upper()
+    return "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | " + operation_type + " | {message} | {extra}\n"
+
 logger.add(
     "logs/operations_{time}.log",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {extra[operation_type] if extra.get('operation_type') else 'GENERAL'} | {message} | {extra}",
+    format=operations_formatter,
     level="INFO",
     filter=lambda record: any(tag in record["message"] for tag in ["[GIT]", "[DOCKER]", "[WEBHOOK]", "[API]"]),
     enqueue=True

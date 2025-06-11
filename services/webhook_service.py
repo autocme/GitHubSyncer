@@ -95,7 +95,28 @@ class WebhookService:
                     raise e
             
             if not pull_success:
-                results["errors"].append(f"Pull failed: {pull_message}")
+                # Enhanced error reporting with detailed Git operation failure information
+                detailed_error = {
+                    "operation": "git_pull",
+                    "repository": repository.name,
+                    "url": str(repository.url),
+                    "branch": str(repository.branch),
+                    "error_message": pull_message,
+                    "last_pull_error": str(repository.last_pull_error) if repository.last_pull_error else None,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+                # Log detailed error for debugging
+                log_git_operation(
+                    action="pull_via_webhook",
+                    repository=repository.name,
+                    success=False,
+                    message=f"Repository pull failed: {pull_message}",
+                    details=detailed_error
+                )
+                
+                results["errors"].append(f"Failed to pull repository {repository.name}: {pull_message}")
+                results["git_error_details"] = detailed_error
                 return results
             
             # Step 2: Restart containers using the same approach as manual restart
