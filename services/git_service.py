@@ -363,6 +363,9 @@ Host github.com
             
             repo.last_pull_success = False
             repo.last_pull_error = error_msg
+            self.db.commit()
+            
+            return False, error_msg
             
         except Exception as e:
             # Handle non-Git exceptions
