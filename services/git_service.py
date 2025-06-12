@@ -293,7 +293,11 @@ Host github.com
                 with git_repo.config_writer() as config:
                     config.set_value("core", "sshCommand", f'ssh -i {ssh_key_file} -o StrictHostKeyChecking=no')
             
-            # Fetch and pull
+            # Reset any local changes and untracked files to allow clean pull
+            git_repo.git.reset('--hard')  # Reset tracked files
+            git_repo.git.clean('-fd')     # Remove untracked files and directories
+            
+            # Fetch latest changes
             origin = git_repo.remotes.origin
             origin.fetch()
             
@@ -302,8 +306,10 @@ Host github.com
             if git_repo.active_branch.name != branch_name:
                 git_repo.git.checkout(branch_name)
             
-            # Pull changes
-            origin.pull(branch_name)
+            # Force pull to override any remaining conflicts
+            git_repo.git.reset('--hard', f'origin/{branch_name}')
+            
+            logger.info(f"Force reset and pulled repository {repo.name} (local changes ignored)")
             
             # Update repository record
             repo.last_pull_success = True
