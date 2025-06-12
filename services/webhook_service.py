@@ -6,7 +6,7 @@ from models import Repository, OperationLog
 from services.git_service import GitService
 from services.docker_service import DockerService
 from utils.helpers import extract_repo_name_from_url
-from utils.logger import logger, log_webhook_event, log_operation, log_performance_metric
+from utils.logger import logger, log_webhook_event, log_operation, log_performance_metric, log_git_operation
 
 class WebhookService:
     def __init__(self, db: Session):
