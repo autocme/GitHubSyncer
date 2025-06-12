@@ -9,7 +9,9 @@ from models import Repository, Container, OperationLog, User, GitKey, ApiKey, Se
 from services.auth_service import AuthService
 from services.git_service import GitService
 from services.docker_service import DockerService
-from utils.logger import logger, log_security_event, log_operation
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 

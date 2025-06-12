@@ -1,262 +1,220 @@
-"""
-Enhanced logging utilities using loguru for structured logging
-"""
-import os
+import logging
 import sys
+from pathlib import Path
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
-from typing import Dict, Any, Optional
-from loguru import logger
 
-def setup_logger():
+def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     """
-    Setup logger configuration - kept for backward compatibility
-    The logger is already configured on module import
+    Setup logger with both file and console handlers
+    
+    Args:
+        name: Logger name (usually __name__)
+        level: Logging level (default: INFO)
+    
+    Returns:
+        Configured logger instance
     """
-    pass
+    logger = logging.getLogger(name)
+    
+    # Prevent duplicate handlers
+    if logger.handlers:
+        return logger
+    
+    logger.setLevel(level)
+    
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # File handler with rotation
+    log_file = logs_dir / "github_sync.log"
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(level)
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+    
+    # Formatter
+    formatter = logging.Formatter(
+        fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    
+    # Add handlers to logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
 
-# Remove default logger
-logger.remove()
+def setup_uvicorn_logger():
+    """Setup uvicorn logger to use our custom formatter"""
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_access_logger = logging.getLogger("uvicorn.access")
+    
+    # Create logs directory
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # File handler for uvicorn logs
+    log_file = logs_dir / "uvicorn.log"
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=5 * 1024 * 1024,  # 5MB
+        backupCount=3,
+        encoding='utf-8'
+    )
+    
+    formatter = logging.Formatter(
+        fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    file_handler.setFormatter(formatter)
+    
+    uvicorn_logger.addHandler(file_handler)
+    uvicorn_access_logger.addHandler(file_handler)
 
-# Configure enhanced structured logging with multiple outputs
-logger.add(
-    sys.stdout,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-    level="INFO",
-    colorize=True,
-    backtrace=True,
-    diagnose=True,
-    enqueue=True
+def log_operation(logger: logging.Logger, operation: str, status: str, message: str, details: str = None):
+    """
+    Log an operation with standardized format
+    
+    Args:
+        logger: Logger instance
+        operation: Operation type (pull, clone, restart, etc.)
+        status: Operation status (success, error, warning)
+        message: Main message
+        details: Additional details (optional)
+    """
+    log_message = f"[{operation.upper()}] {status.upper()}: {message}"
+    if details:
+        log_message += f" | Details: {details}"
+    
+    if status.lower() == 'success':
+        logger.info(log_message)
+    elif status.lower() == 'error':
+        logger.error(log_message)
+    elif status.lower() == 'warning':
+        logger.warning(log_message)
+    else:
+        logger.info(log_message)
+
+def log_api_request(logger: logging.Logger, method: str, path: str, status_code: int, user: str = None):
+    """
+    Log API request
+    
+    Args:
+        logger: Logger instance
+        method: HTTP method
+        path: Request path
+        status_code: HTTP status code
+        user: Username (optional)
+    """
+    user_info = f" | User: {user}" if user else ""
+    logger.info(f"[API] {method} {path} - {status_code}{user_info}")
+
+def log_webhook_event(logger: logging.Logger, repository: str, status: str, message: str):
+    """
+    Log webhook event
+    
+    Args:
+        logger: Logger instance
+        repository: Repository name
+        status: Event status
+        message: Event message
+    """
+    logger.info(f"[WEBHOOK] {repository} - {status.upper()}: {message}")
+
+def log_git_operation(logger: logging.Logger, operation: str, repository: str, success: bool, message: str):
+    """
+    Log Git operation
+    
+    Args:
+        logger: Logger instance
+        operation: Git operation (clone, pull, etc.)
+        repository: Repository name
+        success: Operation success status
+        message: Operation message
+    """
+    status = "SUCCESS" if success else "FAILED"
+    level = logging.INFO if success else logging.ERROR
+    logger.log(level, f"[GIT] {operation.upper()} {repository} - {status}: {message}")
+
+def log_docker_operation(logger: logging.Logger, operation: str, container: str, success: bool, message: str):
+    """
+    Log Docker operation
+    
+    Args:
+        logger: Logger instance
+        operation: Docker operation (restart, start, stop, etc.)
+        container: Container name
+        success: Operation success status
+        message: Operation message
+    """
+    status = "SUCCESS" if success else "FAILED"
+    level = logging.INFO if success else logging.ERROR
+    logger.log(level, f"[DOCKER] {operation.upper()} {container} - {status}: {message}")
+
+def get_log_files():
+    """
+    Get list of available log files
+    
+    Returns:
+        List of log file paths
+    """
+    logs_dir = Path("logs")
+    if not logs_dir.exists():
+        return []
+    
+    log_files = []
+    for log_file in logs_dir.glob("*.log*"):
+        log_files.append({
+            "name": log_file.name,
+            "path": str(log_file),
+            "size": log_file.stat().st_size,
+            "modified": datetime.fromtimestamp(log_file.stat().st_mtime)
+        })
+    
+    return sorted(log_files, key=lambda x: x["modified"], reverse=True)
+
+def cleanup_old_logs(retention_days: int = 30):
+    """
+    Clean up old log files
+    
+    Args:
+        retention_days: Number of days to retain logs
+    """
+    logs_dir = Path("logs")
+    if not logs_dir.exists():
+        return
+    
+    cutoff_time = datetime.now().timestamp() - (retention_days * 24 * 60 * 60)
+    
+    for log_file in logs_dir.glob("*.log*"):
+        if log_file.stat().st_mtime < cutoff_time:
+            try:
+                log_file.unlink()
+                print(f"Deleted old log file: {log_file.name}")
+            except Exception as e:
+                print(f"Failed to delete log file {log_file.name}: {e}")
+
+# Configure root logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# File logging with rotation
-logger.add(
-    "logs/github_sync_{time}.log",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-    level="DEBUG",
-    rotation="10 MB",
-    retention="7 days",
-    compression="gz",
-    enqueue=True
-)
-
-# Error-only file logging
-logger.add(
-    "logs/errors_{time}.log",
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message} | {extra}",
-    level="ERROR",
-    rotation="5 MB",
-    retention="30 days",
-    compression="gz",
-    backtrace=True,
-    diagnose=True,
-    enqueue=True
-)
-
-# Operation-specific file logging with custom formatter
-def operations_formatter(record):
-    operation_type = record["extra"].get("operation_type", "GENERAL").upper()
-    return "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | " + operation_type + " | {message} | {extra}\n"
-
-logger.add(
-    "logs/operations_{time}.log",
-    format=operations_formatter,
-    level="INFO",
-    filter=lambda record: any(tag in record["message"] for tag in ["[GIT]", "[DOCKER]", "[WEBHOOK]", "[API]"]),
-    enqueue=True
-)
-
-def log_operation(operation: str, status: str, message: str, details: Optional[Dict[str, Any]] = None, repository: Optional[str] = None, container: Optional[str] = None):
-    """Log an operation with structured context"""
-    context = {
-        "operation_type": operation,
-        "status": status,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    if repository:
-        context["repository"] = repository
-    if container:
-        context["container"] = container
-    
-    with logger.contextualize(**context):
-        if status == "success":
-            logger.info(f"[{operation.upper()}] {message}")
-        elif status == "error":
-            logger.error(f"[{operation.upper()}] {message}")
-        else:
-            logger.warning(f"[{operation.upper()}] {message}")
-
-def log_git_operation(action: str, repository: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
-    """Log Git-specific operations"""
-    context = {
-        "operation_type": "git",
-        "action": action,
-        "repository": repository,
-        "success": success,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if success:
-            logger.info(f"[GIT] {action} on {repository}: {message}")
-        else:
-            logger.error(f"[GIT] {action} on {repository} failed: {message}")
-
-def log_docker_operation(action: str, container_name: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
-    """Log Docker-specific operations"""
-    context = {
-        "operation_type": "docker",
-        "action": action,
-        "container": container_name,
-        "success": success,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if success:
-            logger.info(f"[DOCKER] {action} on {container_name}: {message}")
-        else:
-            logger.error(f"[DOCKER] {action} on {container_name} failed: {message}")
-
-def log_webhook_event(event_type: str, repository: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
-    """Log webhook-specific events"""
-    context = {
-        "operation_type": "webhook",
-        "event_type": event_type,
-        "repository": repository,
-        "success": success,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if success:
-            logger.info(f"[WEBHOOK] {event_type} for {repository}: {message}")
-        else:
-            logger.error(f"[WEBHOOK] {event_type} for {repository} failed: {message}")
-
-def log_api_request(method: str, path: str, status_code: int, response_time: float, user: Optional[str] = None, ip: Optional[str] = None):
-    """Log API request details"""
-    context = {
-        "operation_type": "api_request",
-        "method": method,
-        "path": path,
-        "status_code": status_code,
-        "response_time": response_time,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if user:
-        context["user"] = user
-    if ip:
-        context["ip"] = ip
-    
-    with logger.contextualize(**context):
-        logger.info(f"[API] {method} {path} - {status_code} ({response_time:.3f}s)")
-
-def log_security_event(event_type: str, user: Optional[str], ip: str, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
-    """Log security-related events"""
-    context = {
-        "operation_type": "security",
-        "event_type": event_type,
-        "ip": ip,
-        "success": success,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if user:
-        context["user"] = user
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if success:
-            logger.info(f"[SECURITY] {event_type}: {message}")
-        else:
-            logger.warning(f"[SECURITY] {event_type} failed: {message}")
-
-def log_database_operation(operation: str, table: str, count: int, success: bool, message: str, details: Optional[Dict[str, Any]] = None):
-    """Log database operations"""
-    context = {
-        "operation_type": "database",
-        "operation": operation,
-        "table": table,
-        "count": count,
-        "success": success,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if success:
-            logger.info(f"[DATABASE] {operation} on {table}: {message} (count: {count})")
-        else:
-            logger.error(f"[DATABASE] {operation} on {table} failed: {message}")
-
-def log_performance_metric(operation: str, duration: float, details: Optional[Dict[str, Any]] = None):
-    """Log performance metrics"""
-    context = {
-        "operation_type": "performance",
-        "operation": operation,
-        "duration": duration,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if duration > 5.0:
-            logger.warning(f"[PERFORMANCE] {operation} took {duration:.3f}s (slow)")
-        else:
-            logger.info(f"[PERFORMANCE] {operation} completed in {duration:.3f}s")
-
-def log_system_status(component: str, status: str, message: str, details: Optional[Dict[str, Any]] = None):
-    """Log system status updates"""
-    context = {
-        "operation_type": "system",
-        "component": component,
-        "status": status,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    
-    if details:
-        context.update(details)
-    
-    with logger.contextualize(**context):
-        if status == "healthy":
-            logger.info(f"[SYSTEM] {component}: {message}")
-        elif status == "warning":
-            logger.warning(f"[SYSTEM] {component}: {message}")
-        else:
-            logger.error(f"[SYSTEM] {component}: {message}")
-
-# Ensure logs directory exists
-os.makedirs("logs", exist_ok=True)
-
-# Export the configured logger
-__all__ = [
-    "logger",
-    "setup_logger",
-    "log_operation",
-    "log_git_operation", 
-    "log_docker_operation",
-    "log_webhook_event",
-    "log_api_request",
-    "log_security_event",
-    "log_database_operation",
-    "log_performance_metric",
-    "log_system_status"
-]
+# Reduce noise from external libraries
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("docker").setLevel(logging.WARNING)
+logging.getLogger("git").setLevel(logging.WARNING)

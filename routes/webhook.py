@@ -1,20 +1,19 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import Dict, Any
-from datetime import datetime
 from database import get_db
 from services.webhook_service import WebhookService
-from utils.logger import logger, log_webhook_event, log_operation
+from utils.logger import setup_logger
 import json
+
+logger = setup_logger(__name__)
 router = APIRouter()
 
 @router.post("/github")
 async def github_webhook(request: Request, db: Session = Depends(get_db)):
     """Handle GitHub webhook"""
-    body = None
     try:
         # Get webhook payload
-        body = await request.body()
         payload = await request.json()
         
         logger.info(f"Received GitHub webhook: {json.dumps(payload, indent=2)}")
@@ -50,51 +49,20 @@ async def github_webhook(request: Request, db: Session = Depends(get_db)):
                 "details": result
             }
     
-    except json.JSONDecodeError as e:
-        body_preview = body.decode('utf-8')[:200] if body else "No body"
-        error_details = {
-            "error_type": "json_decode_error",
-            "error_message": str(e),
-            "payload_preview": body_preview,
-            "timestamp": datetime.utcnow().isoformat(),
-            "suggested_action": "Verify webhook payload format and JSON syntax"
-        }
+    except json.JSONDecodeError:
         error_msg = "Invalid JSON payload"
-        
-        log_webhook_event(
-            event_type="webhook_json_error",
-            repository="unknown",
-            success=False,
-            message=error_msg,
-            details=error_details
-        )
-        
+        logger.error(error_msg)
         raise HTTPException(status_code=400, detail=error_msg)
     
     except Exception as e:
-        body_preview = body.decode('utf-8')[:200] if body else "No body"
-        error_details = {
-            "error_type": type(e).__name__,
-            "error_message": str(e),
-            "payload_preview": body_preview,
-            "timestamp": datetime.utcnow().isoformat(),
-            "suggested_action": "Check webhook service logs and repository configuration"
-        }
         error_msg = f"Error processing webhook: {str(e)}"
-        
-        log_webhook_event(
-            event_type="webhook_processing_error",
-            repository="unknown",
-            success=False,
-            message=error_msg,
-            details=error_details
-        )
+        logger.error(error_msg)
         
         # Return error response instead of raising exception
         return {
             "status": "error",
             "message": error_msg,
-            "details": error_details
+            "details": {"error": str(e)}
         }
 
 @router.get("/test")

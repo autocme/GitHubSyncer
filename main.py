@@ -1,8 +1,7 @@
 import os
 import json
-import time
 import uvicorn
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,31 +9,19 @@ from contextlib import asynccontextmanager
 from database import init_db, get_db
 from routes import api, web, webhook
 from services.auth_service import AuthService
-from utils.logger import logger, log_api_request, log_performance_metric
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    start_time = time.time()
-    logger.info("Starting GitHub Sync Server with enhanced logging capabilities...")
-    
-    try:
-        init_db()
-        startup_duration = time.time() - start_time
-        log_performance_metric("application_startup", startup_duration, {
-            "database_initialized": True,
-            "loguru_enabled": True
-        })
-        logger.success(f"GitHub Sync Server started successfully in {round(startup_duration * 1000, 2)}ms")
-    except Exception as e:
-        logger.error(f"Failed to start GitHub Sync Server: {e}")
-        raise
-    
+    logger.info("Starting GitHub Sync Server...")
+    init_db()
+    logger.info("Database initialized")
     yield
-    
     # Shutdown
     logger.info("Shutting down GitHub Sync Server...")
-    logger.info("Server shutdown completed")
 
 app = FastAPI(
     title="GitHub Sync Server",
@@ -45,38 +32,6 @@ app = FastAPI(
 
 # Add session middleware
 app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY", "github-sync-secret-key-change-in-production"))
-
-# API request logging middleware
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    
-    # Get client IP
-    client_ip = request.client.host if request.client else "unknown"
-    if "x-forwarded-for" in request.headers:
-        client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
-    
-    response = await call_next(request)
-    
-    # Calculate duration
-    duration = time.time() - start_time
-    
-    # Get user from session if available
-    user = None
-    if hasattr(request.state, 'current_user') and request.state.current_user:
-        user = request.state.current_user.username
-    
-    # Log the request
-    log_api_request(
-        method=request.method,
-        path=str(request.url.path),
-        status_code=response.status_code,
-        response_time=duration,
-        user=user,
-        ip=client_ip
-    )
-    
-    return response
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")

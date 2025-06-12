@@ -7,8 +7,10 @@ from datetime import datetime
 from git import Repo, GitCommandError
 from sqlalchemy.orm import Session
 from models import Repository, OperationLog, GitKey, Setting
+from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
-from utils.logger import logger, log_git_operation, log_operation, log_performance_metric
+
+logger = setup_logger(__name__)
 
 class GitService:
     def __init__(self, db: Session):
@@ -322,94 +324,20 @@ Host github.com
             logger.info(f"Successfully pulled repository {repo.name}")
             return True, f"Successfully pulled repository {repo.name}"
             
-        except GitCommandError as e:
-            # Enhanced Git-specific error handling
-            error_details = {
-                "repository": repo.name,
-                "url": str(repo.url),
-                "branch": str(repo.branch),
-                "local_path": local_path,
-                "git_command": e.command,
-                "git_status": e.status,
-                "git_stderr": e.stderr.strip() if e.stderr else None,
-                "git_stdout": e.stdout.strip() if e.stdout else None
-            }
-            
-            # Determine specific error type and provide actionable messages
-            if "Authentication failed" in str(e) or "Permission denied" in str(e):
-                error_msg = f"Authentication failed for repository {repo.name}. Please check SSH keys or access permissions."
-                error_details["error_type"] = "authentication"
-            elif "fatal: couldn't find remote ref" in str(e):
-                error_msg = f"Branch '{repo.branch}' not found in repository {repo.name}. Please verify the branch name."
-                error_details["error_type"] = "branch_not_found"
-            elif "Repository not found" in str(e) or "does not exist" in str(e):
-                error_msg = f"Repository {repo.name} not found at {repo.url}. Please verify the URL."
-                error_details["error_type"] = "repository_not_found"
-            elif "Network is unreachable" in str(e) or "Name or service not known" in str(e):
-                error_msg = f"Network error accessing repository {repo.name}. Please check connectivity."
-                error_details["error_type"] = "network_error"
-            else:
-                error_msg = f"Git operation failed for repository {repo.name}: {e.stderr or str(e)}"
-                error_details["error_type"] = "git_error"
-            
-            # Log with structured error details
-            log_git_operation(
-                action="pull",
-                repository=repo.name,
-                success=False,
-                message=error_msg,
-                details=error_details
-            )
-            
-            repo.last_pull_success = False
-            repo.last_pull_error = error_msg
-            self.db.commit()
-            
-            return False, error_msg
-            
         except Exception as e:
-            # Handle non-Git exceptions
-            error_details = {
-                "repository": repo.name,
-                "url": str(repo.url),
-                "branch": str(repo.branch),
-                "local_path": local_path,
-                "exception_type": type(e).__name__,
-                "exception_message": str(e)
-            }
-            
-            if "Read-only file system" in str(e):
-                error_msg = f"Cannot write to repository path for {repo.name}. File system is read-only."
-                error_details["error_type"] = "readonly_filesystem"
-            elif "Permission denied" in str(e):
-                error_msg = f"Permission denied accessing repository {repo.name} at {local_path}."
-                error_details["error_type"] = "permission_denied"
-            elif "No space left on device" in str(e):
-                error_msg = f"Insufficient disk space for repository {repo.name}."
-                error_details["error_type"] = "disk_space"
-            else:
-                error_msg = f"System error pulling repository {repo.name}: {str(e)}"
-                error_details["error_type"] = "system_error"
-            
-            # Log with structured error details
-            log_git_operation(
-                action="pull",
-                repository=repo.name,
-                success=False,
-                message=error_msg,
-                details=error_details
-            )
+            error_msg = f"Failed to pull repository {repo.name}: {str(e)}"
+            logger.error(error_msg)
             
             repo.last_pull_success = False
             repo.last_pull_error = error_msg
             
-            # Log operation with structured details
+            # Log operation
             log_entry = OperationLog(
                 operation_type="pull",
                 repository_id=repo.id,
                 status="error",
-                message=error_msg,
-                details=str(error_details)
+                message=f"Failed to pull repository {repo.name}",
+                details=error_msg
             )
             self.db.add(log_entry)
             self.db.commit()

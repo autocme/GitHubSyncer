@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from models import User, ApiKey, Setting, LoginAttempt
-from utils.logger import logger, log_security_event
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 class AuthService:
     def __init__(self, db: Session):
@@ -146,62 +148,16 @@ class AuthService:
             if user and self.verify_password(password, user.password_hash):
                 # Successful login
                 self.record_login_attempt(username, ip_address, True, user_agent)
-                log_security_event(
-                    event_type="login_success",
-                    user=username,
-                    ip=ip_address,
-                    success=True,
-                    message=f"User {username} authenticated successfully",
-                    details={
-                        "user_id": user.id,
-                        "user_agent": user_agent,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }
-                )
+                logger.info(f"User authenticated: {username}")
                 return user, None
             else:
-                # Failed login - provide detailed error information
-                error_details = {
-                    "username": username,
-                    "ip_address": ip_address,
-                    "user_agent": user_agent,
-                    "user_exists": user is not None,
-                    "password_valid": False if user else "user_not_found",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "failure_reason": "user_not_found" if not user else "invalid_password"
-                }
-                
+                # Failed login
                 self.record_login_attempt(username, ip_address, False, user_agent)
-                log_security_event(
-                    event_type="login_failure",
-                    user=username,
-                    ip=ip_address,
-                    success=False,
-                    message=f"Authentication failed for user: {username}",
-                    details=error_details
-                )
+                logger.warning(f"Authentication failed for user: {username}")
                 return None, "Invalid username or password"
                 
         except Exception as e:
-            error_details = {
-                "username": username,
-                "ip_address": ip_address,
-                "user_agent": user_agent,
-                "error_type": type(e).__name__,
-                "error_message": str(e),
-                "timestamp": datetime.utcnow().isoformat(),
-                "suggested_action": "Check database connectivity and user authentication settings"
-            }
-            
-            log_security_event(
-                event_type="authentication_error",
-                user=username,
-                ip=ip_address,
-                success=False,
-                message=f"Authentication error for user {username}: {str(e)}",
-                details=error_details
-            )
-            
+            logger.error(f"Error authenticating user {username}: {e}")
             return None, "Authentication error occurred"
     
     def create_jwt_token(self, user: User) -> str:

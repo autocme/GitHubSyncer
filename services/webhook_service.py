@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 from models import Repository, OperationLog
 from services.git_service import GitService
 from services.docker_service import DockerService
+from utils.logger import setup_logger
 from utils.helpers import extract_repo_name_from_url
-from utils.logger import logger, log_webhook_event, log_operation, log_performance_metric, log_git_operation
+
+logger = setup_logger(__name__)
 
 class WebhookService:
     def __init__(self, db: Session):
@@ -95,28 +97,7 @@ class WebhookService:
                     raise e
             
             if not pull_success:
-                # Enhanced error reporting with detailed Git operation failure information
-                detailed_error = {
-                    "operation": "git_pull",
-                    "repository": repository.name,
-                    "url": str(repository.url),
-                    "branch": str(repository.branch),
-                    "error_message": pull_message,
-                    "last_pull_error": str(repository.last_pull_error) if repository.last_pull_error else None,
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-                
-                # Log detailed error for debugging
-                log_git_operation(
-                    action="pull_via_webhook",
-                    repository=repository.name,
-                    success=False,
-                    message=f"Repository pull failed: {pull_message}",
-                    details=detailed_error
-                )
-                
-                results["errors"].append(f"Failed to pull repository {repository.name}: {pull_message}")
-                results["git_error_details"] = detailed_error
+                results["errors"].append(f"Pull failed: {pull_message}")
                 return results
             
             # Step 2: Restart containers using the same approach as manual restart
