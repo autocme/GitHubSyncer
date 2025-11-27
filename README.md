@@ -21,7 +21,7 @@ A robust FastAPI-based webhook server for automatic GitHub repository synchroniz
 
 1. **Clone the repository:**
 ```bash
-git clone <your-repo-url>
+git clone git@github.com:autocme/GitHubSyncer.git>
 cd github-sync-server
 ```
 
